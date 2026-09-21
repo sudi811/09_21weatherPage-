@@ -4,7 +4,12 @@
 
 ![Dynamic Weather](https://img.shields.io/badge/CWA%20API-O--A0001--001-blue?style=flat-square)
 ![Canvas 2D](https://img.shields.io/badge/Render-60FPS%20Canvas%202D-cyan?style=flat-square)
+![Live Demo](https://img.shields.io/badge/Live%20Demo-GitHub%20Pages-success?style=flat-square&logo=github)
 ![License](https://img.shields.io/badge/License-MIT-green?style=flat-square)
+
+> 🚀 **線上展示網址 (Live Demo)**：[https://sudi811.github.io/09_21weatherPage-/](https://sudi811.github.io/09_21weatherPage-/)
+>
+> *(若剛開啟 Pages 設定，GitHub 約需 1~2 分鐘進行初次部署建置)*
 
 ---
 
