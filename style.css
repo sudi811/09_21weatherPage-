@@ -1,34 +1,39 @@
 /* ==========================================================================
-   臺灣氣候誌 (Taiwan Weather Journal) - MUJI Minimalist Aesthetic
-   Design Philosophy: Unbleached Paper, Sumi Ink, Calm Nature, Natural Rhythm
+   臺灣即時氣候地圖 - Google Maps Style
+   Aesthetics: Google Material Design, Map Cartography, Responsive & Clean
    ========================================================================== */
 
-@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@300;400;500;700&family=Noto+Serif+TC:wght@400;600;700;900&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&family=Roboto:wght@300;400;500;700&display=swap');
 
 :root {
-  /* MUJI 色彩系統 */
-  --muji-bg: #F7F5F0;             /* 和紙暖白底色 */
-  --muji-surface: #FFFFFF;        /* 面板卡片白 */
-  --muji-surface-subtle: #F9F8F5; /* 微淡襯底底色 */
-  --muji-border: #E8E3D8;         /* 極細麻色邊框 */
-  --muji-border-light: #F0ECE4;   /* 超淺分隔線 */
+  /* Google Maps 核心品牌色彩 */
+  --g-blue: #1A73E8;
+  --g-blue-light: #E8F0FE;
+  --g-red: #EA4335;
+  --g-yellow: #FBBC04;
+  --g-green: #34A853;
 
-  --muji-ink-dark: #2B2825;       /* 濃黑墨炭色 (主標題) */
-  --muji-ink-main: #45413D;       /* 炭黑正文 */
-  --muji-ink-muted: #7A746E;      /* 鉛灰輔助字 */
-  --muji-ink-faint: #A69F97;      /* 淡灰標籤 */
+  /* Google UI 表面與文字 */
+  --g-surface: #FFFFFF;
+  --g-bg: #F8F9FA;
+  --g-border: #DADCE0;
+  --g-border-light: #E8EAED;
 
-  --muji-red: #8C2626;            /* 無印沉紅 (核心亮點/選取狀態) */
-  --muji-red-soft: rgba(140, 38, 38, 0.08);
-  --muji-sage: #5A7363;           /* 淡竹青 */
-  --muji-ochre: #A08250;          /* 暖赭黃 */
+  --g-text-primary: #202124;
+  --g-text-secondary: #5F6368;
+  --g-text-faint: #80868B;
 
-  --font-serif: 'Noto Serif TC', serif;
-  --font-sans: 'Noto Sans TC', sans-serif;
+  /* Google Maps 製圖配色 */
+  --g-map-ocean: #AADAFF;
+  --g-map-land: #F4F3F0;
+  --g-map-green: #CDE8CD;
+  --g-map-highway: #FFFFFF;
 
-  --shadow-soft: 0 4px 20px rgba(0, 0, 0, 0.035);
-  --shadow-hover: 0 6px 24px rgba(0, 0, 0, 0.06);
-  --transition: all 0.3s cubic-bezier(0.25, 1, 0.5, 1);
+  --font-family: 'Roboto', 'Noto Sans TC', -apple-system, BlinkMacSystemFont, sans-serif;
+  --shadow-card: 0 1px 2px 0 rgba(60,64,67,0.3), 0 2px 6px 2px rgba(60,64,67,0.15);
+  --shadow-floating: 0 2px 6px rgba(60,64,67,0.25);
+  --shadow-hover: 0 4px 12px rgba(60,64,67,0.3);
+  --transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 * {
@@ -39,16 +44,15 @@
 }
 
 body {
-  font-family: var(--font-sans);
-  background-color: var(--muji-bg);
-  color: var(--muji-ink-main);
+  font-family: var(--font-family);
+  background-color: var(--g-bg);
+  color: var(--g-text-primary);
   min-height: 100vh;
   position: relative;
   overflow-x: hidden;
-  line-height: 1.6;
 }
 
-/* 底層柔和氣流粒子 Canvas */
+/* 底層風向氣流 Canvas */
 #windCanvas {
   position: fixed;
   top: 0;
@@ -59,286 +63,315 @@ body {
   z-index: 0;
 }
 
-/* 應用主包裝器 */
-.muji-app-wrapper {
+/* 主容器 */
+.gmap-app-container {
   position: relative;
   z-index: 1;
-  max-width: 1440px;
+  max-width: 1480px;
   margin: 0 auto;
-  padding: 24px 32px 50px 32px;
+  padding: 16px 24px 40px 24px;
   display: flex;
   flex-direction: column;
-  gap: 24px;
+  gap: 16px;
 }
 
 /* ==========================================================================
-   頂部簡約導航列 (MUJI Header)
+   頂部 Google Maps 經典浮動搜尋列 (Top Search Bar)
    ========================================================================== */
-.muji-header {
+.gmap-top-bar {
   display: flex;
+  align-items: center;
   justify-content: space-between;
-  align-items: center;
   flex-wrap: wrap;
-  gap: 16px;
-  padding: 16px 24px;
-  background: var(--muji-surface);
-  border: 1px solid var(--muji-border);
-  border-radius: 14px;
-  box-shadow: var(--shadow-soft);
-}
-
-.muji-brand {
-  display: flex;
-  align-items: center;
   gap: 14px;
 }
 
-.brand-seal {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 36px;
-  height: 36px;
-  background-color: var(--muji-red);
-  color: #fff;
-  font-family: var(--font-serif);
-  font-weight: 700;
-  font-size: 1.15rem;
-  border-radius: 6px;
-  letter-spacing: 0;
-}
-
-.brand-titles {
-  display: flex;
-  flex-direction: column;
-}
-
-.brand-name {
-  font-family: var(--font-serif);
-  font-size: 1.35rem;
-  font-weight: 700;
-  color: var(--muji-ink-dark);
-  letter-spacing: 0.08em;
-  line-height: 1.2;
-}
-
-.brand-en {
-  font-size: 0.68rem;
-  font-weight: 500;
-  color: var(--muji-ink-muted);
-  letter-spacing: 0.12em;
-}
-
-.header-right {
+.search-box-card {
   display: flex;
   align-items: center;
-  gap: 16px;
-  flex-wrap: wrap;
-}
-
-.status-indicator {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 0.8rem;
-  color: var(--muji-ink-muted);
-}
-
-.status-dot {
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-  background-color: var(--muji-sage);
-}
-
-.update-timestamp {
-  font-size: 0.8rem;
-  color: var(--muji-ink-faint);
-  letter-spacing: 0.04em;
-}
-
-.muji-btn {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 7px 16px;
-  background: var(--muji-surface-subtle);
-  border: 1px solid var(--muji-border);
-  border-radius: 8px;
-  color: var(--muji-ink-main);
-  font-family: var(--font-sans);
-  font-size: 0.82rem;
-  font-weight: 500;
-  letter-spacing: 0.04em;
-  cursor: pointer;
+  background: var(--g-surface);
+  border-radius: 28px;
+  padding: 4px 14px;
+  box-shadow: var(--shadow-card);
+  width: 520px;
+  max-width: 100%;
+  border: 1px solid transparent;
   transition: var(--transition);
 }
 
-.muji-btn:hover {
-  background: #fff;
-  border-color: var(--muji-ink-muted);
-  color: var(--muji-ink-dark);
+.search-box-card:focus-within {
+  box-shadow: 0 2px 8px 1px rgba(60,64,67,0.35);
+  border-color: var(--g-blue);
 }
 
-.muji-btn.spinning svg {
-  animation: spinSlow 1s linear infinite;
+.search-menu-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 6px;
+  cursor: pointer;
+  border-radius: 50%;
+  transition: var(--transition);
 }
 
-@keyframes spinSlow {
+.search-menu-btn:hover {
+  background: var(--g-bg);
+}
+
+.g-pin-logo {
+  display: flex;
+  align-items: center;
+  margin: 0 8px;
+}
+
+.gmap-search-input {
+  flex: 1;
+  border: none;
+  outline: none;
+  font-family: inherit;
+  font-size: 0.95rem;
+  color: var(--g-text-primary);
+  padding: 8px 4px;
+  background: transparent;
+}
+
+.gmap-search-input::placeholder {
+  color: var(--g-text-faint);
+}
+
+.search-action-btn {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 8px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: var(--transition);
+}
+
+.search-action-btn:hover {
+  background: var(--g-bg);
+}
+
+.search-divider {
+  width: 1px;
+  height: 24px;
+  background: var(--g-border-light);
+  margin: 0 4px;
+}
+
+.refresh-btn.spinning svg {
+  animation: gSpin 0.9s linear infinite;
+}
+
+@keyframes gSpin {
   from { transform: rotate(0deg); }
   to { transform: rotate(360deg); }
 }
 
+/* 狀態膠囊 */
+.gmap-status-pill {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--g-surface);
+  border-radius: 20px;
+  padding: 8px 16px;
+  box-shadow: var(--shadow-floating);
+  font-size: 0.84rem;
+  color: var(--g-text-secondary);
+  font-weight: 500;
+}
+
+.live-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background-color: var(--g-green);
+  box-shadow: 0 0 6px rgba(52, 168, 83, 0.6);
+}
+
+.pill-divider {
+  color: var(--g-border);
+}
+
 /* ==========================================================================
-   主佈局：左側地圖 (63%) + 右側圖層面板 (37%)
+   主視圖：左側/中央 Google 地圖 (62%) + 右側地標詳情 (38%)
    ========================================================================== */
-.main-layout {
+.gmap-main-grid {
   display: grid;
-  grid-template-columns: 1fr 410px;
-  gap: 24px;
+  grid-template-columns: 1fr 420px;
+  gap: 20px;
   align-items: start;
 }
 
-@media (max-width: 1080px) {
-  .main-layout {
+@media (max-width: 1100px) {
+  .gmap-main-grid {
     grid-template-columns: 1fr;
   }
 }
 
 /* ==========================================================================
-   主視覺：居中臺灣互動地圖 (Map Section)
+   主視覺：Google Maps 地圖視圖 (Map Section)
    ========================================================================== */
-.map-section {
+.gmap-viewport-section {
   display: flex;
   flex-direction: column;
 }
 
-.map-card {
-  background: var(--muji-surface);
-  border: 1px solid var(--muji-border);
-  border-radius: 18px;
-  padding: 24px;
-  box-shadow: var(--shadow-soft);
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
+.gmap-frame {
   position: relative;
+  width: 100%;
+  height: 700px;
+  background-color: var(--g-map-ocean);
+  border-radius: 16px;
+  overflow: hidden;
+  box-shadow: var(--shadow-card);
+  border: 1px solid var(--g-border);
 }
 
-.map-top-bar {
+/* 浮動圖層選擇膠囊 (Layer Chips) */
+.floating-layer-chips {
+  position: absolute;
+  top: 14px;
+  left: 14px;
   display: flex;
-  justify-content: space-between;
-  align-items: center;
+  gap: 8px;
+  z-index: 15;
   flex-wrap: wrap;
-  gap: 12px;
-  padding-bottom: 12px;
-  border-bottom: 1px solid var(--muji-border-light);
 }
 
-.map-title-group {
+.chip-item {
   display: flex;
-  align-items: baseline;
-  gap: 10px;
-}
-
-.map-title {
-  font-family: var(--font-serif);
-  font-size: 1.15rem;
-  font-weight: 700;
-  color: var(--muji-ink-dark);
-  letter-spacing: 0.05em;
-}
-
-.map-subtitle {
-  font-size: 0.8rem;
-  color: var(--muji-red);
+  align-items: center;
+  gap: 6px;
+  background: var(--g-surface);
+  border: 1px solid var(--g-border);
+  border-radius: 20px;
+  padding: 7px 14px;
+  font-family: inherit;
+  font-size: 0.84rem;
   font-weight: 500;
-}
-
-/* 分區篩選小按鈕 */
-.map-region-filter {
-  display: flex;
-  gap: 4px;
-  background: var(--muji-surface-subtle);
-  padding: 3px;
-  border-radius: 8px;
-  border: 1px solid var(--muji-border-light);
-}
-
-.filter-chip {
-  padding: 4px 10px;
-  border-radius: 6px;
-  border: none;
-  background: transparent;
-  color: var(--muji-ink-muted);
-  font-family: var(--font-sans);
-  font-size: 0.78rem;
+  color: var(--g-text-secondary);
   cursor: pointer;
+  box-shadow: var(--shadow-floating);
   transition: var(--transition);
 }
 
-.filter-chip.active, .filter-chip:hover {
-  background: #fff;
-  color: var(--muji-ink-dark);
-  box-shadow: 0 1px 4px rgba(0,0,0,0.05);
+.chip-item:hover {
+  background: var(--g-bg);
+  color: var(--g-text-primary);
+}
+
+.chip-item.active {
+  background: var(--g-blue-light);
+  color: var(--g-blue);
+  border-color: var(--g-blue);
   font-weight: 600;
 }
 
-/* 地圖視圖核心容器 */
-.map-viewport {
+/* 分區快篩膠囊 */
+.floating-region-chips {
+  position: absolute;
+  top: 60px;
+  left: 14px;
+  display: flex;
+  gap: 6px;
+  z-index: 15;
+  flex-wrap: wrap;
+}
+
+.region-chip {
+  padding: 4px 10px;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.9);
+  border: 1px solid var(--g-border-light);
+  font-size: 0.76rem;
+  color: var(--g-text-secondary);
+  cursor: pointer;
+  transition: var(--transition);
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+.region-chip.active, .region-chip:hover {
+  background: var(--g-surface);
+  color: var(--g-text-primary);
+  font-weight: 600;
+  border-color: var(--g-text-secondary);
+}
+
+/* 地圖舞台 (可縮放) */
+.map-stage {
   position: relative;
   width: 100%;
-  height: 640px;
-  background: #FAF9F6;
-  border-radius: 14px;
-  border: 1px solid var(--muji-border-light);
-  overflow: hidden;
+  height: 100%;
   display: flex;
   align-items: center;
   justify-content: center;
+  transition: transform 0.3s cubic-bezier(0.2, 0, 0, 1);
+  transform-origin: 50% 50%;
 }
 
-/* 臺灣 SVG 向量樣式 */
-.taiwan-svg {
+/* 臺灣 SVG 向量底圖 */
+.gmap-taiwan-svg {
   width: 100%;
   height: 100%;
-  max-height: 620px;
+  max-height: 680px;
   pointer-events: none;
 }
 
-.island-mainland {
-  fill: #EFECE6;
-  stroke: #D2CBC0;
-  stroke-width: 1.5;
+.gmap-land {
+  fill: var(--g-map-land);
+  stroke: #D5DDD6;
+  stroke-width: 1.8;
   stroke-linejoin: round;
-  filter: drop-shadow(0 4px 10px rgba(0, 0, 0, 0.03));
-  transition: var(--transition);
+  filter: drop-shadow(0 3px 8px rgba(0, 0, 0, 0.08));
 }
 
-.island-box {
-  fill: rgba(247, 245, 240, 0.7);
-  stroke: #DED8CC;
-  stroke-width: 0.8;
-  stroke-dasharray: 2, 2;
+.gmap-greenery {
+  fill: var(--g-map-green);
+  opacity: 0.9;
 }
 
-.island-label {
-  font-size: 9px;
-  font-family: var(--font-sans);
-  fill: #8C867E;
-  letter-spacing: 0.05em;
+.gmap-highway {
+  fill: none;
+  stroke: var(--g-map-highway);
+  stroke-width: 2.2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.15));
 }
 
-.island-body {
-  fill: #E5E1D8;
-  stroke: #C9C2B6;
+.hway-1 { stroke: #FFFFFF; }
+.hway-3 { stroke: #FFFFFF; stroke-dasharray: 6, 2; stroke-width: 1.8; }
+.hway-9 { stroke: #FFE082; stroke-width: 1.8; }
+
+.island-card-box {
+  fill: rgba(255, 255, 255, 0.65);
+  stroke: #B5D6EC;
   stroke-width: 1;
+  stroke-dasharray: 3, 3;
+}
+
+.island-title {
+  font-size: 9.5px;
+  font-family: inherit;
+  fill: #5F6368;
+  font-weight: 500;
+}
+
+.gmap-land-island {
+  fill: var(--g-map-land);
+  stroke: #D5DDD6;
+  stroke-width: 1.2;
 }
 
 /* ==========================================================================
-   地圖測站互動標記 (Map Station Markers)
+   Google Maps 水滴 Pin 標記與標籤 (Drop-Pins)
    ========================================================================== */
-.markers-layer {
+.pins-layer {
   position: absolute;
   top: 0;
   left: 0;
@@ -347,364 +380,483 @@ body {
   pointer-events: auto;
 }
 
-.station-node {
+.g-pin-node {
   position: absolute;
-  transform: translate(-50%, -50%);
+  transform: translate(-50%, -100%);
   cursor: pointer;
-  z-index: 10;
-  transition: transform 0.25s ease;
-  display: flex;
-  align-items: center;
-  gap: 5px;
-}
-
-.station-node:hover {
-  transform: translate(-50%, -50%) scale(1.08);
-  z-index: 25;
-}
-
-.station-node.active {
-  z-index: 30;
-}
-
-/* 測站圓點 */
-.node-dot {
-  width: 9px;
-  height: 9px;
-  border-radius: 50%;
-  background: var(--muji-ink-dark);
-  border: 2px solid #fff;
-  box-shadow: 0 0 0 1px var(--muji-border);
-  transition: var(--transition);
-  flex-shrink: 0;
-}
-
-.station-node:hover .node-dot {
-  background: var(--muji-red);
-}
-
-.station-node.active .node-dot {
-  background: var(--muji-red);
-  box-shadow: 0 0 0 3px var(--muji-red-soft), 0 0 0 1px var(--muji-red);
-}
-
-/* 測站標籤 Pill Badge */
-.node-pill {
-  background: rgba(255, 255, 255, 0.92);
-  backdrop-filter: blur(4px);
-  border: 1px solid var(--muji-border);
-  border-radius: 999px;
-  padding: 2px 7px;
-  font-size: 0.72rem;
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
-  transition: var(--transition);
-  white-space: nowrap;
-}
-
-.node-name {
-  font-weight: 600;
-  color: var(--muji-ink-dark);
-}
-
-.node-val {
-  color: var(--muji-ink-muted);
-  font-weight: 500;
-}
-
-.node-arrow {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--muji-red);
-  transition: transform 0.4s ease;
-}
-
-/* 選中狀態樣式 (MUJI 沉紅高亮) */
-.station-node.active .node-pill {
-  background: var(--muji-red);
-  border-color: var(--muji-red);
-  color: #fff;
-  box-shadow: 0 3px 12px rgba(140, 38, 38, 0.28);
-}
-
-.station-node.active .node-name {
-  color: #fff;
-}
-
-.station-node.active .node-val {
-  color: #F8D8D8;
-}
-
-.station-node.active .node-arrow {
-  color: #fff;
-}
-
-/* 地圖左下角圖例說明 */
-.map-legend {
-  position: absolute;
-  bottom: 14px;
-  left: 14px;
-  background: rgba(255, 255, 255, 0.88);
-  backdrop-filter: blur(4px);
-  border: 1px solid var(--muji-border);
-  border-radius: 8px;
-  padding: 8px 12px;
+  z-index: 20;
   display: flex;
   flex-direction: column;
+  align-items: center;
+  transition: transform 0.2s ease;
+}
+
+.g-pin-node:hover {
+  z-index: 35;
+  transform: translate(-50%, -100%) scale(1.1);
+}
+
+.g-pin-node.active {
+  z-index: 40;
+  animation: googlePinBounce 0.6s cubic-bezier(0.28, 0.84, 0.42, 1);
+}
+
+@keyframes googlePinBounce {
+  0% { transform: translate(-50%, -120%); }
+  50% { transform: translate(-50%, -95%); }
+  75% { transform: translate(-50%, -105%); }
+  100% { transform: translate(-50%, -100%); }
+}
+
+/* Google 經典紅色水滴 Pin 圖形 */
+.g-drop-pin {
+  width: 28px;
+  height: 38px;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3));
+}
+
+.pin-shadow {
+  width: 14px;
+  height: 5px;
+  background: rgba(0, 0, 0, 0.22);
+  border-radius: 50%;
+  margin-top: -3px;
+  filter: blur(1px);
+}
+
+/* 水滴 Pin 旁邊的浮動白色藥丸標籤 */
+.g-pin-label {
+  position: absolute;
+  bottom: 40px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--g-surface);
+  border: 1px solid var(--g-border);
+  border-radius: 14px;
+  padding: 2px 8px;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.2);
+  display: flex;
+  align-items: center;
   gap: 4px;
-  font-size: 0.72rem;
-  color: var(--muji-ink-muted);
+  white-space: nowrap;
+  font-size: 0.74rem;
+  font-weight: 500;
   pointer-events: none;
 }
 
-.legend-item {
+.label-station {
+  color: var(--g-text-primary);
+  font-weight: 700;
+}
+
+.label-val {
+  color: var(--g-blue);
+  font-weight: 700;
+}
+
+.label-wind-arrow {
+  display: inline-flex;
+  color: var(--g-red);
+  transition: transform 0.4s ease;
+}
+
+/* 選取狀態下的標籤 */
+.g-pin-node.active .g-pin-label {
+  background: var(--g-text-primary);
+  color: #fff;
+  border-color: var(--g-text-primary);
+}
+
+.g-pin-node.active .label-station {
+  color: #fff;
+}
+
+.g-pin-node.active .label-val {
+  color: #8AB4F8;
+}
+
+/* ==========================================================================
+   Google Maps InfoWindow 氣泡彈窗
+   ========================================================================== */
+.gmap-infowindow {
+  position: absolute;
+  background: var(--g-surface);
+  border-radius: 12px;
+  box-shadow: 0 3px 14px rgba(0, 0, 0, 0.28);
+  width: 250px;
+  padding: 14px 16px;
+  z-index: 50;
+  transform: translate(-50%, -135%);
+  pointer-events: auto;
+  border: 1px solid var(--g-border-light);
+}
+
+.info-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 8px;
+}
+
+.info-county {
+  font-size: 0.75rem;
+  color: var(--g-text-secondary);
+}
+
+.info-title {
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--g-text-primary);
+}
+
+.info-close-btn {
+  background: transparent;
+  border: none;
+  font-size: 1.2rem;
+  line-height: 1;
+  color: var(--g-text-faint);
+  cursor: pointer;
+  padding: 0 4px;
+}
+
+.info-close-btn:hover {
+  color: var(--g-text-primary);
+}
+
+.info-temp-row {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.info-temp {
+  font-size: 1.6rem;
+  font-weight: 700;
+  color: var(--g-text-primary);
+}
+
+.info-weather {
+  font-size: 0.85rem;
+  color: var(--g-text-secondary);
+}
+
+.info-stats-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  padding-top: 8px;
+  border-top: 1px solid var(--g-border-light);
+}
+
+.info-stat {
+  display: flex;
+  flex-direction: column;
+  font-size: 0.72rem;
+  color: var(--g-text-secondary);
+}
+
+.info-stat strong {
+  font-size: 0.82rem;
+  color: var(--g-text-primary);
+  margin-top: 1px;
+}
+
+/* InfoWindow 三角尖角 */
+.info-arrow {
+  position: absolute;
+  bottom: -9px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 0;
+  height: 0;
+  border-left: 9px solid transparent;
+  border-right: 9px solid transparent;
+  border-top: 9px solid var(--g-surface);
+  filter: drop-shadow(0 2px 2px rgba(0, 0, 0, 0.1));
+}
+
+/* ==========================================================================
+   Google Maps 經典浮動控制器 (Zoom Controls)
+   ========================================================================== */
+.gmap-controls {
+  position: absolute;
+  bottom: 20px;
+  right: 20px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  z-index: 15;
+}
+
+.gmap-ctrl-btn {
+  width: 40px;
+  height: 40px;
+  background: var(--g-surface);
+  border: 1px solid var(--g-border);
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  box-shadow: var(--shadow-floating);
+  transition: var(--transition);
+}
+
+.gmap-ctrl-btn:hover {
+  background: var(--g-bg);
+}
+
+.ctrl-divider {
+  width: 28px;
+  height: 1px;
+  background: var(--g-border-light);
+  margin: 1px 0;
+}
+
+/* 左下角圖例說明 */
+.gmap-legend-box {
+  position: absolute;
+  bottom: 16px;
+  left: 16px;
+  background: rgba(255, 255, 255, 0.92);
+  backdrop-filter: blur(4px);
+  border-radius: 8px;
+  padding: 8px 12px;
+  box-shadow: var(--shadow-floating);
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  font-size: 0.74rem;
+  color: var(--g-text-secondary);
+  pointer-events: none;
+  z-index: 15;
+}
+
+.gmap-legend-row {
   display: flex;
   align-items: center;
   gap: 6px;
 }
 
-.legend-circle {
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-  background: var(--muji-ink-dark);
-}
-
 /* ==========================================================================
-   右側側邊欄：圖層切換與指標詳情 (Sidebar Panel)
+   右側欄位：Google Place Sheet 測站詳細 (Sidebar Panel)
    ========================================================================== */
-.sidebar-section {
+.gmap-sidebar {
   display: flex;
   flex-direction: column;
-  gap: 18px;
+  gap: 16px;
 }
 
-.panel-card {
-  background: var(--muji-surface);
-  border: 1px solid var(--muji-border);
+.place-sheet-card {
+  background: var(--g-surface);
+  border: 1px solid var(--g-border);
   border-radius: 16px;
+  box-shadow: var(--shadow-card);
+  overflow: hidden;
   padding: 20px;
-  box-shadow: var(--shadow-soft);
 }
 
-.panel-heading {
+/* 1. 地標主資訊卡 */
+.place-banner {
   display: flex;
   justify-content: space-between;
   align-items: center;
   margin-bottom: 12px;
 }
 
-.panel-title {
-  font-family: var(--font-serif);
-  font-size: 1rem;
-  font-weight: 700;
-  color: var(--muji-ink-dark);
-  letter-spacing: 0.05em;
-}
-
-.panel-desc {
+.banner-badge {
+  background: var(--g-blue-light);
+  color: var(--g-blue);
   font-size: 0.74rem;
-  color: var(--muji-ink-faint);
+  font-weight: 700;
+  padding: 4px 10px;
+  border-radius: 999px;
 }
 
-/* 1. 圖層切換 Tabs (Layer Selector) */
-.layer-tabs {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
+.weather-icon-large {
+  font-size: 2.2rem;
+}
+
+.place-title-wrap {
+  margin-bottom: 4px;
+}
+
+.place-title {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--g-text-primary);
+  line-height: 1.2;
+}
+
+.place-county {
+  font-size: 0.85rem;
+  color: var(--g-text-secondary);
+}
+
+.place-rating-row {
+  display: flex;
+  align-items: center;
   gap: 6px;
-  background: var(--muji-surface-subtle);
-  padding: 4px;
-  border-radius: 10px;
-  border: 1px solid var(--muji-border-light);
+  font-size: 0.8rem;
+  margin-top: 4px;
 }
 
-.layer-tab {
+.rating-num {
+  font-weight: 700;
+  color: #E37400;
+}
+
+.rating-stars {
+  color: #E37400;
+  font-size: 0.85rem;
+}
+
+.rating-count {
+  color: var(--g-text-faint);
+}
+
+/* 主數值展示 */
+.place-metric-display {
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+  margin: 16px 0 4px 0;
+}
+
+.metric-number {
+  font-size: 3.4rem;
+  font-weight: 700;
+  color: var(--g-text-primary);
+  line-height: 0.9;
+}
+
+.metric-unit {
+  font-size: 1.4rem;
+  font-weight: 600;
+  color: var(--g-blue);
+}
+
+.metric-condition {
+  font-size: 1rem;
+  color: var(--g-text-secondary);
+  margin-left: 10px;
+  font-weight: 500;
+}
+
+.metric-feels-like {
+  font-size: 0.85rem;
+  color: var(--g-text-secondary);
+  margin-bottom: 16px;
+}
+
+/* Google 快捷操作按鈕列 */
+.place-actions-row {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  padding-top: 14px;
+  border-top: 1px solid var(--g-border-light);
+}
+
+.action-btn {
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   gap: 4px;
   padding: 8px 4px;
-  border: 1px solid transparent;
-  background: transparent;
-  border-radius: 8px;
+  background: var(--g-surface);
+  border: 1px solid var(--g-border);
+  border-radius: 10px;
+  color: var(--g-blue);
+  font-family: inherit;
+  font-size: 0.78rem;
+  font-weight: 600;
   cursor: pointer;
   transition: var(--transition);
-  font-family: var(--font-sans);
 }
 
-.layer-tab .tab-icon {
-  font-size: 1.1rem;
+.action-btn:hover {
+  background: var(--g-blue-light);
+  border-color: var(--g-blue);
 }
 
-.layer-tab .tab-text {
-  font-size: 0.74rem;
-  font-weight: 500;
-  color: var(--muji-ink-muted);
+.action-btn.active {
+  background: var(--g-blue-light);
+  border-color: var(--g-blue);
 }
 
-.layer-tab.active {
-  background: #fff;
-  border-color: var(--muji-border);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
-}
-
-.layer-tab.active .tab-text {
-  color: var(--muji-red);
-  font-weight: 700;
-}
-
-/* 2. 選定測站主數值卡片 (Main Station Card) */
-.station-header {
+/* 2. 羅盤儀表卡 (Compass Sheet Card) */
+.card-heading {
   display: flex;
   justify-content: space-between;
-  align-items: flex-start;
+  align-items: center;
+  margin-bottom: 14px;
 }
 
-.station-meta {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-
-.county-badge {
-  font-size: 0.78rem;
-  color: var(--muji-ink-muted);
-  letter-spacing: 0.05em;
-}
-
-.station-title {
-  font-family: var(--font-serif);
-  font-size: 1.7rem;
-  font-weight: 700;
-  color: var(--muji-ink-dark);
-  letter-spacing: 0.04em;
-  line-height: 1.2;
-}
-
-.weather-state {
+.card-title-group {
   display: flex;
   align-items: center;
-  gap: 6px;
-  background: var(--muji-surface-subtle);
-  border: 1px solid var(--muji-border-light);
-  padding: 4px 10px;
+  gap: 8px;
+}
+
+.card-title {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--g-text-primary);
+}
+
+.beaufort-tag {
+  background: #FEF7E0;
+  color: #B06000;
+  border: 1px solid #FEEFC3;
+  padding: 3px 10px;
   border-radius: 999px;
-  font-size: 0.85rem;
-  color: var(--muji-ink-main);
-  font-weight: 500;
+  font-size: 0.76rem;
+  font-weight: 700;
 }
 
-/* 巨幅指標數值 */
-.layer-highlight-metric {
-  display: flex;
-  align-items: baseline;
-  gap: 4px;
-  margin: 14px 0 4px 0;
+.cwa-tag {
+  font-size: 0.72rem;
+  color: var(--g-text-faint);
 }
 
-.main-metric-val {
-  font-family: var(--font-serif);
-  font-size: 3.8rem;
-  font-weight: 900;
-  line-height: 0.9;
-  color: var(--muji-ink-dark);
-  letter-spacing: -1px;
-}
-
-.main-metric-unit {
-  font-size: 1.5rem;
-  font-weight: 600;
-  color: var(--muji-red);
-}
-
-.main-metric-sub {
-  font-size: 0.85rem;
-  color: var(--muji-ink-muted);
-  margin-bottom: 16px;
-}
-
-/* 無印生活小籤 (Muji Quote Box) */
-.muji-quote-box {
-  background: var(--muji-surface-subtle);
-  border: 1px solid var(--muji-border-light);
-  border-radius: 10px;
-  padding: 12px 14px;
-  position: relative;
-  margin-top: 6px;
-}
-
-.quote-sign {
-  font-family: var(--font-serif);
-  font-size: 1rem;
-  color: var(--muji-ink-faint);
-  line-height: 1;
-}
-
-.quote-sign.right {
-  display: block;
-  text-align: right;
-}
-
-.quote-text {
-  font-family: var(--font-serif);
-  font-size: 0.85rem;
-  color: var(--muji-ink-main);
-  line-height: 1.6;
-  letter-spacing: 0.03em;
-  padding: 0 4px;
-}
-
-/* 3. 無印極簡風向羅盤 (Minimalist Compass) */
-.beaufort-badge {
-  font-size: 0.74rem;
-  padding: 2px 8px;
-  border-radius: 999px;
-  background: var(--muji-red-soft);
-  color: var(--muji-red);
-  font-weight: 600;
-  border: 1px solid rgba(140, 38, 38, 0.2);
-}
-
-.muji-compass-wrapper {
+/* Google 風格 360° 羅盤 */
+.google-compass-box {
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 14px;
-  margin-top: 4px;
 }
 
-.muji-compass-dial {
+.g-compass-dial {
   position: relative;
-  width: 170px;
-  height: 170px;
+  width: 165px;
+  height: 165px;
   border-radius: 50%;
-  background: var(--muji-surface-subtle);
-  border: 1px solid var(--muji-border);
-  box-shadow: inset 0 0 14px rgba(0, 0, 0, 0.02);
+  background: var(--g-bg);
+  border: 2px solid var(--g-border-light);
+  box-shadow: inset 0 0 10px rgba(0, 0, 0, 0.04);
   display: flex;
   align-items: center;
   justify-content: center;
 }
 
-.c-mark {
+.g-mark {
   position: absolute;
   font-size: 0.72rem;
-  font-family: var(--font-serif);
-  font-weight: 600;
-  color: var(--muji-ink-faint);
+  font-weight: 700;
+  color: var(--g-text-faint);
 }
 
-.c-n { top: 6px; left: 50%; transform: translateX(-50%); color: var(--muji-red); }
-.c-e { top: 50%; right: 8px; transform: translateY(-50%); }
-.c-s { bottom: 6px; left: 50%; transform: translateX(-50%); }
-.c-w { top: 50%; left: 8px; transform: translateY(-50%); }
+.g-n { top: 6px; left: 50%; transform: translateX(-50%); color: var(--g-red); }
+.g-e { top: 50%; right: 8px; transform: translateY(-50%); }
+.g-s { bottom: 6px; left: 50%; transform: translateX(-50%); }
+.g-w { top: 50%; left: 8px; transform: translateY(-50%); }
 
-/* 羅盤指針 (旋轉指向來風方位) */
-.muji-compass-needle {
+/* 羅盤旋轉指針 */
+.g-compass-needle {
   position: absolute;
   width: 100%;
   height: 100%;
@@ -715,35 +867,35 @@ body {
   transition: transform 0.8s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
-.needle-pointer {
+.g-needle-arrow {
   position: absolute;
   top: 14px;
   width: 0;
   height: 0;
-  border-left: 6px solid transparent;
-  border-right: 6px solid transparent;
-  border-bottom: 22px solid var(--muji-red);
+  border-left: 7px solid transparent;
+  border-right: 7px solid transparent;
+  border-bottom: 24px solid var(--g-red);
 }
 
-.needle-pointer::after {
+.g-needle-arrow::after {
   content: '';
   position: absolute;
-  top: 22px;
+  top: 24px;
   left: -1px;
   width: 2px;
   height: 38px;
-  background: linear-gradient(180deg, var(--muji-red), transparent);
+  background: linear-gradient(180deg, var(--g-red), transparent);
 }
 
-/* 中心旋轉風杯 (轉速與即時風速連動) */
-.muji-anemometer-center {
+/* 中心旋轉風杯 */
+.g-anemometer-center {
   position: relative;
-  width: 50px;
-  height: 50px;
+  width: 48px;
+  height: 48px;
   border-radius: 50%;
-  background: #fff;
-  border: 1px solid var(--muji-border);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+  background: var(--g-surface);
+  border: 1px solid var(--g-border);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -756,18 +908,18 @@ body {
   to { transform: rotate(360deg); }
 }
 
-.anemometer-arm {
+.rotor-arm {
   position: absolute;
-  width: 36px;
+  width: 34px;
   height: 2px;
-  background: #C4BEB4;
+  background: var(--g-border);
 }
 
-.arm-1 { transform: rotate(0deg); }
-.arm-2 { transform: rotate(120deg); }
-.arm-3 { transform: rotate(240deg); }
+.rotor-1 { transform: rotate(0deg); }
+.rotor-2 { transform: rotate(120deg); }
+.rotor-3 { transform: rotate(240deg); }
 
-.anemometer-arm::after {
+.rotor-arm::after {
   content: '';
   position: absolute;
   right: -3px;
@@ -775,120 +927,114 @@ body {
   width: 9px;
   height: 9px;
   border-radius: 50%;
-  background: var(--muji-ink-muted);
+  background: var(--g-blue);
 }
 
-.anemometer-core-dot {
+.rotor-dot {
   width: 10px;
   height: 10px;
   border-radius: 50%;
-  background: var(--muji-ink-dark);
+  background: var(--g-text-primary);
   z-index: 3;
 }
 
-.compass-detail-text {
+.compass-data-row {
   display: flex;
   align-items: center;
   justify-content: space-around;
   width: 100%;
   padding-top: 10px;
-  border-top: 1px solid var(--muji-border-light);
+  border-top: 1px solid var(--g-border-light);
 }
 
-.compass-stat {
+.c-data-cell {
   text-align: center;
 }
 
-.stat-label {
+.cell-label {
   display: block;
-  font-size: 0.72rem;
-  color: var(--muji-ink-muted);
+  font-size: 0.74rem;
+  color: var(--g-text-secondary);
   margin-bottom: 2px;
 }
 
-.stat-val {
-  font-family: var(--font-serif);
-  font-size: 0.95rem;
+.cell-val {
+  font-size: 1rem;
   font-weight: 700;
-  color: var(--muji-ink-dark);
+  color: var(--g-text-primary);
 }
 
-.compass-divider {
+.c-data-divider {
   width: 1px;
   height: 24px;
-  background: var(--muji-border-light);
+  background: var(--g-border-light);
 }
 
-/* 4. 詳細氣候數據清單 (Metrics List) */
-.muji-metrics-list {
-  list-style: none;
+/* 3. 詳細環境指標項目 (Google Info Rows) */
+.g-info-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.g-info-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  font-size: 0.85rem;
+}
+
+.g-info-icon {
+  font-size: 1.1rem;
+  margin-top: 1px;
+  flex-shrink: 0;
+}
+
+.g-info-text {
   display: flex;
   flex-direction: column;
 }
 
-.metric-row {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 10px 0;
-  border-bottom: 1px dashed var(--muji-border-light);
-  font-size: 0.85rem;
+.g-info-label {
+  font-size: 0.74rem;
+  color: var(--g-text-secondary);
 }
 
-.metric-row:last-child {
-  border-bottom: none;
-  padding-bottom: 0;
-}
-
-.row-label {
-  color: var(--muji-ink-muted);
-}
-
-.row-val {
+.g-info-val {
   font-weight: 600;
-  color: var(--muji-ink-dark);
-  letter-spacing: 0.02em;
+  color: var(--g-text-primary);
 }
 
-.row-val small {
-  font-weight: normal;
-  color: var(--muji-ink-faint);
-}
-
-/* ==========================================================================
-   頁尾 (MUJI Footer)
-   ========================================================================== */
-.muji-footer {
+/* 頁尾 */
+.gmap-footer {
   text-align: center;
-  padding: 24px 10px 10px 10px;
-  font-size: 0.75rem;
-  color: var(--muji-ink-faint);
-  line-height: 1.8;
-  letter-spacing: 0.04em;
+  font-size: 0.78rem;
+  color: var(--g-text-faint);
+  padding: 16px 0;
 }
 
 /* ==========================================================================
-   行動裝置適應性排版 (Mobile Responsive)
+   行動裝置排版 (Responsive)
    ========================================================================== */
 @media (max-width: 768px) {
-  .muji-app-wrapper {
-    padding: 16px 14px 40px 14px;
-    gap: 18px;
+  .gmap-app-container {
+    padding: 12px 10px 40px 10px;
+    gap: 12px;
   }
 
-  .map-card {
-    padding: 16px 12px;
+  .search-box-card {
+    width: 100%;
   }
 
-  .map-viewport {
-    height: 480px;
+  .gmap-frame {
+    height: 500px;
   }
 
-  .main-metric-val {
-    font-size: 3rem;
+  .metric-number {
+    font-size: 2.8rem;
   }
 
-  .panel-card {
-    padding: 16px;
+  .floating-region-chips {
+    top: 54px;
   }
 }
