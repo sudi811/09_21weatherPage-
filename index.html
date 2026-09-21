@@ -3,253 +3,305 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="description" content="臺灣即時氣象與動態風向可視化儀表盤，整合中央氣象署即時觀測資料，提供動態風場粒子流動與全臺縣市即時溫度。">
-  <title>臺灣即時氣象與動態風向儀表盤 | Taiwan Real-time Wind & Weather</title>
+  <meta name="description" content="臺灣即時氣候誌 — 無印風格即時氣象地圖與動態風場圖層儀表盤。整合中央氣象署資料，呈現全臺縣市氣溫、動態風向、雨量與濕度。">
+  <title>臺灣氣候誌 | 即時動態風向與氣溫地圖</title>
   <link rel="stylesheet" href="style.css">
-  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>💨</text></svg>">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🍃</text></svg>">
 </head>
 <body>
 
-  <!-- 背景 2D 粒子即時風場流動 Canvas -->
+  <!-- 底層和紙風痕粒子 Canvas -->
   <canvas id="windCanvas"></canvas>
 
-  <!-- 主應用介面容器 -->
-  <div class="app-container">
-    
-    <!-- 頂部導航與狀態列 -->
-    <header class="header">
-      <div class="brand-group">
-        <div class="brand-icon" aria-hidden="true">💨</div>
-        <div>
-          <h1 class="brand-title">臺灣即時氣象觀測站</h1>
-          <p class="brand-subtitle">
-            <span>動態風場與即時氣溫儀表盤</span>
-            <span>•</span>
-            <span>中央氣象署 CWA 資料同步</span>
-          </p>
+  <div class="muji-app-wrapper">
+
+    <!-- 頂部簡約導航列 -->
+    <header class="muji-header">
+      <div class="muji-brand">
+        <span class="brand-seal">気</span>
+        <div class="brand-titles">
+          <h1 class="brand-name">臺灣氣候誌</h1>
+          <span class="brand-en">TAIWAN REAL-TIME WEATHER JOURNAL</span>
         </div>
       </div>
 
-      <div class="header-actions">
-        <div class="status-badge" id="apiStatusBadge">
-          <span class="pulse-dot"></span>
-          <span id="apiStatusText">即時連線中</span>
+      <div class="header-right">
+        <div class="status-indicator">
+          <span class="status-dot" id="statusDot"></span>
+          <span class="status-label" id="statusLabel">即時連線</span>
         </div>
-        <div class="time-badge" id="lastUpdatedText">更新時間: 載入中...</div>
-        <button class="btn-refresh" id="btnRefresh" title="重新擷取中央氣象署最新數據">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+        <span class="update-timestamp" id="lastUpdatedText">更新: --:--</span>
+        <button class="muji-btn" id="btnRefresh" title="重新整理即時氣象">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
             <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/>
           </svg>
-          <span>立即更新</span>
+          <span>更新觀測</span>
         </button>
       </div>
     </header>
 
-    <!-- 主觀測儀表網格 -->
-    <main class="dashboard-grid">
-      
-      <!-- 左側：焦點測站即時氣溫與詳細氣象指標 -->
-      <section class="hero-weather-card">
-        <div class="station-meta-bar">
-          <div class="station-name-wrap">
-            <h2 class="station-name" id="currentStationName">臺北</h2>
-            <span class="station-county" id="currentCountyName">臺北市</span>
-          </div>
-          <div class="weather-condition-tag" id="currentWeatherTag">
-            <span id="weatherIcon">🌤️</span>
-            <span id="weatherDesc">晴時多雲</span>
-          </div>
-        </div>
+    <!-- 主體雙欄排版：左側/中央居中地圖，右側圖層與數值欄 -->
+    <main class="main-layout">
 
-        <div class="hero-temp-block">
-          <div class="temp-large">
-            <span id="currentTemp">26.8</span>
-            <span class="temp-unit">°C</span>
-          </div>
-          <div class="temp-details">
-            <div class="temp-detail-item">體感溫度: <strong id="feelsLikeTemp">27.5°C</strong></div>
-            <div class="temp-detail-item">風速感受: <strong id="windChillDesc">微風輕拂</strong></div>
-            <div class="temp-detail-item">經緯度: <span id="stationCoords">25.04°N, 121.51°E</span></div>
-          </div>
-        </div>
-
-        <!-- 6 大詳細氣象指標卡片 -->
-        <div class="metrics-grid">
-          <div class="metric-card">
-            <div class="metric-header">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M17.7 7.7a2.5 2.5 0 1 1 1.8 4.3H2"/>
-                <path d="M9.6 4.6A2 2 0 1 1 11 8H2"/>
-                <path d="M12.6 19.4A2 2 0 1 0 14 16H2"/>
-              </svg>
-              <span>平均風速</span>
+      <!-- ====================================================================
+           主視覺：居中臺灣互動地圖 (Centered Taiwan Map)
+           ==================================================================== -->
+      <section class="map-section">
+        <div class="map-card">
+          
+          <!-- 地圖頂部微資訊列 -->
+          <div class="map-top-bar">
+            <div class="map-title-group">
+              <span class="map-title">全臺氣候地圖</span>
+              <span class="map-subtitle" id="mapLayerHint">目前顯示：氣溫圖層 (°C)</span>
             </div>
-            <div class="metric-value" id="metricWindSpeed">3.2 <small style="font-size: 0.8rem; font-weight: normal;">m/s</small></div>
-            <div class="metric-sub" id="metricWindSpeedKmh">11.5 km/h</div>
-          </div>
 
-          <div class="metric-card">
-            <div class="metric-header">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>
-              </svg>
-              <span>瞬間最大陣風</span>
+            <!-- 地圖區域快篩 -->
+            <div class="map-region-filter" id="regionFilters">
+              <button class="filter-chip active" data-region="all">全境</button>
+              <button class="filter-chip" data-region="north">北部</button>
+              <button class="filter-chip" data-region="central">中部</button>
+              <button class="filter-chip" data-region="south">南部</button>
+              <button class="filter-chip" data-region="east">東部</button>
+              <button class="filter-chip" data-region="islands">離島</button>
             </div>
-            <div class="metric-value" id="metricGustSpeed">5.8 <small style="font-size: 0.8rem; font-weight: normal;">m/s</small></div>
-            <div class="metric-sub" id="metricGustLevel">4級陣風</div>
           </div>
 
-          <div class="metric-card">
-            <div class="metric-header">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z"/>
-              </svg>
-              <span>相對濕度</span>
-            </div>
-            <div class="metric-value" id="metricHumidity">74%</div>
-            <div class="metric-sub">舒適微潮</div>
-          </div>
+          <!-- 地圖視覺核心容器 -->
+          <div class="map-viewport" id="mapViewport">
+            
+            <!-- 臺灣向量 SVG 輪廓 -->
+            <svg class="taiwan-svg" viewBox="0 0 500 700" xmlns="http://www.w3.org/2000/svg" aria-label="臺灣地圖">
+              <!-- 經緯度微參考線 -->
+              <g class="grid-lines" stroke="#E6E1D8" stroke-width="0.8" stroke-dasharray="3,4">
+                <line x1="40" y1="200" x2="460" y2="200" />
+                <line x1="40" y1="360" x2="460" y2="360" />
+                <line x1="40" y1="520" x2="460" y2="520" />
+                <line x1="250" y1="60" x2="250" y2="640" />
+              </g>
 
-          <div class="metric-card">
-            <div class="metric-header">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <circle cx="12" cy="12" r="10"/>
-                <path d="M12 6v6l4 2"/>
-              </svg>
-              <span>大氣壓力</span>
-            </div>
-            <div class="metric-value" id="metricPressure">1011.2 <small style="font-size: 0.75rem; font-weight: normal;">hPa</small></div>
-            <div class="metric-sub">正常大氣壓</div>
-          </div>
+              <!-- 臺灣本島輪廓 (簡約柔美墨線與和紙底色) -->
+              <path class="island-mainland" d="
+                M 330 95 
+                C 345 105, 368 125, 375 145
+                C 382 165, 370 190, 362 215
+                C 355 240, 362 270, 358 310
+                C 354 350, 348 400, 335 460
+                C 322 520, 290 575, 255 615
+                C 245 628, 235 632, 230 630
+                C 222 626, 218 610, 215 585
+                C 205 540, 192 485, 185 435
+                C 178 385, 192 340, 210 290
+                C 228 240, 245 200, 268 160
+                C 285 130, 310 100, 330 95 Z
+              " />
 
-          <div class="metric-card">
-            <div class="metric-header">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M20 16.58A5 5 0 0 0 18 7h-1.26A8 8 0 1 0 4 15.25"/>
-                <path d="M8 19v2M12 19v2M16 19v2"/>
-              </svg>
-              <span>本日雨量</span>
-            </div>
-            <div class="metric-value" id="metricRain">0.0 <small style="font-size: 0.8rem; font-weight: normal;">mm</small></div>
-            <div class="metric-sub" id="metricRainDesc">尚無降雨</div>
-          </div>
+              <!-- 中央山脈示意脊線 (極淡裝飾線) -->
+              <path class="mountain-ridge" d="
+                M 335 150 
+                Q 325 250, 305 350 
+                T 260 520
+              " fill="none" stroke="#DED8CC" stroke-width="1.2" stroke-dasharray="2,3" />
 
-          <div class="metric-card">
-            <div class="metric-header">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <circle cx="12" cy="12" r="10"/>
-                <polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76"/>
-              </svg>
-              <span>蒲福氏風級</span>
-            </div>
-            <div class="metric-value" id="metricBeaufort">3 級</div>
-            <div class="metric-sub" id="metricBeaufortName">微風 (樹葉搖動)</div>
-          </div>
-        </div>
-      </section>
+              <!-- 離島小框與輪廓：澎湖群島 -->
+              <g class="island-group penghu">
+                <rect x="65" y="335" width="60" height="65" rx="6" class="island-box" />
+                <text x="70" y="348" class="island-label">澎湖群島</text>
+                <!-- 澎湖島型簡寫 -->
+                <circle cx="95" cy="370" r="10" class="island-body" />
+                <circle cx="85" cy="380" r="5" class="island-body" />
+                <circle cx="108" cy="365" r="4" class="island-body" />
+              </g>
 
-      <!-- 右側：360° 動態風向羅盤與風杯旋轉儀表 -->
-      <section class="hero-wind-card">
-        <div class="compass-header">
-          <div class="compass-title">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <circle cx="12" cy="12" r="10"/>
-              <polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76"/>
+              <!-- 離島小框：金門 -->
+              <g class="island-group kinmen">
+                <rect x="40" y="165" width="55" height="50" rx="6" class="island-box" />
+                <text x="45" y="178" class="island-label">金門</text>
+                <path d="M 52 195 C 65 190, 75 198, 85 194 C 82 205, 60 206, 52 195 Z" class="island-body" />
+              </g>
+
+              <!-- 離島小框：馬祖 -->
+              <g class="island-group matsu">
+                <rect x="55" y="45" width="55" height="50" rx="6" class="island-box" />
+                <text x="60" y="58" class="island-label">連江/馬祖</text>
+                <circle cx="78" cy="74" r="5" class="island-body" />
+                <circle cx="92" cy="80" r="6" class="island-body" />
+              </g>
             </svg>
-            <span>360° 即時風向羅盤</span>
-          </div>
-          <span class="wind-scale-badge" id="windScaleBadge">3級 微風</span>
-        </div>
 
-        <!-- 羅盤核心視圖 -->
-        <div class="compass-wrapper">
-          <div class="compass-dial">
-            <span class="dial-mark north">N</span>
-            <span class="dial-mark east">E</span>
-            <span class="dial-mark south">S</span>
-            <span class="dial-mark west">W</span>
-            <div class="compass-ring-inner"></div>
-          </div>
-
-          <!-- 動態轉向指針（旋轉至當前風向角） -->
-          <div class="compass-needle-wrap" id="compassNeedle">
-            <div class="compass-arrow" title="風向來源方向"></div>
-          </div>
-
-          <!-- 中心動態旋轉風杯（轉速與真實風速連動） -->
-          <div class="anemometer-center" title="旋轉風速計 (轉速與即時風速連動)">
-            <div class="anemometer-rotor" id="anemometerRotor">
-              <div class="cup"></div>
-              <div class="cup"></div>
-              <div class="cup"></div>
+            <!-- 測站互動點圖層 (HTML Overlay) -->
+            <div class="markers-layer" id="markersLayer">
+              <!-- 由 js/app.js 動態生成 22 個測站標記 -->
             </div>
-            <div class="anemometer-core" id="compassCenterSpeed">3.2</div>
-          </div>
-        </div>
 
-        <!-- 羅盤數據詳情 -->
-        <div class="compass-readout">
-          <div class="readout-item">
-            <div class="readout-label">風向方位</div>
-            <div class="readout-val" id="readoutDirection">東北風 (65°)</div>
-          </div>
-          <div class="readout-item">
-            <div class="readout-label">風速等級</div>
-            <div class="readout-val" id="readoutSpeedText">3.2 m/s</div>
-          </div>
-          <div class="readout-item">
-            <div class="readout-label">流速狀態</div>
-            <div class="readout-val" id="readoutFlowStatus" style="color: var(--accent-emerald);">氣流平穩</div>
+            <!-- 地圖左下角圖例提示 -->
+            <div class="map-legend">
+              <div class="legend-item">
+                <span class="legend-circle"></span>
+                <span>測站位置 (點擊切換)</span>
+              </div>
+              <div class="legend-item">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#8C2626" stroke-width="2.5">
+                  <line x1="12" y1="19" x2="12" y2="5"/>
+                  <polyline points="5 12 12 5 19 12"/>
+                </svg>
+                <span>即時風向流向</span>
+              </div>
+            </div>
+
           </div>
         </div>
       </section>
 
+      <!-- ====================================================================
+           右側欄位：圖層控制與詳細資料 (Layer Control & Deep Metrics)
+           ==================================================================== -->
+      <aside class="sidebar-section">
+
+        <!-- 1. 氣象圖層切換選單 (Layer Switcher) -->
+        <div class="panel-card layer-selector-card">
+          <div class="panel-heading">
+            <span class="panel-title">觀測圖層</span>
+            <span class="panel-desc">點選切換地圖顯示維度</span>
+          </div>
+
+          <div class="layer-tabs" id="layerTabs">
+            <button class="layer-tab active" data-layer="temp">
+              <span class="tab-icon">🌡️</span>
+              <span class="tab-text">氣溫</span>
+            </button>
+            <button class="layer-tab" data-layer="wind">
+              <span class="tab-icon">💨</span>
+              <span class="tab-text">風向風速</span>
+            </button>
+            <button class="layer-tab" data-layer="rain">
+              <span class="tab-icon">🌧️</span>
+              <span class="tab-text">降雨量</span>
+            </button>
+            <button class="layer-tab" data-layer="humidity">
+              <span class="tab-icon">💧</span>
+              <span class="tab-text">濕度氣壓</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- 2. 選定測站主數值卡片 -->
+        <div class="panel-card station-main-card">
+          <div class="station-header">
+            <div class="station-meta">
+              <span class="county-badge" id="currentCountyName">臺北市</span>
+              <h2 class="station-title" id="currentStationName">臺北站</h2>
+            </div>
+            <div class="weather-state" id="currentWeatherTag">
+              <span id="weatherIcon">🌤️</span>
+              <span id="weatherDesc">晴時多雲</span>
+            </div>
+          </div>
+
+          <!-- 主圖層巨幅數值展示 -->
+          <div class="layer-highlight-metric">
+            <div class="main-metric-val" id="primaryMetricValue">26.8</div>
+            <div class="main-metric-unit" id="primaryMetricUnit">°C</div>
+          </div>
+          <div class="main-metric-sub" id="primaryMetricSub">體感溫度 27.5°C</div>
+
+          <!-- 無印生活小籤 -->
+          <div class="muji-quote-box">
+            <span class="quote-sign">「</span>
+            <p class="quote-text" id="mujiTipText">微風和煦，空氣溫潤宜人，適合換上一席純棉便服散步透氣。</p>
+            <span class="quote-sign right">」</span>
+          </div>
+        </div>
+
+        <!-- 3. 無印風 360° 極簡風向羅盤儀 -->
+        <div class="panel-card compass-card">
+          <div class="panel-heading">
+            <span class="panel-title">風向與風杯觀測</span>
+            <span class="beaufort-badge" id="windScaleBadge">3級 微風</span>
+          </div>
+
+          <div class="muji-compass-wrapper">
+            <div class="muji-compass-dial">
+              <span class="c-mark c-n">北</span>
+              <span class="c-mark c-e">東</span>
+              <span class="c-mark c-s">南</span>
+              <span class="c-mark c-w">西</span>
+              
+              <!-- 動態旋轉風向指針 (指出來風方位) -->
+              <div class="muji-compass-needle" id="compassNeedle">
+                <div class="needle-pointer"></div>
+              </div>
+
+              <!-- 中心動態旋轉風杯 (轉速與真實風速連動) -->
+              <div class="muji-anemometer-center" id="anemometerRotor" title="風杯轉速與即時風速連動">
+                <div class="anemometer-arm arm-1"></div>
+                <div class="anemometer-arm arm-2"></div>
+                <div class="anemometer-arm arm-3"></div>
+                <div class="anemometer-core-dot"></div>
+              </div>
+            </div>
+
+            <div class="compass-detail-text">
+              <div class="compass-stat">
+                <span class="stat-label">風向角度</span>
+                <span class="stat-val" id="readoutDirection">東北風 65°</span>
+              </div>
+              <div class="compass-divider"></div>
+              <div class="compass-stat">
+                <span class="stat-label">即時風速</span>
+                <span class="stat-val" id="readoutSpeedText">3.2 m/s</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 4. 詳細氣候數據清單 (純淨清單排版) -->
+        <div class="panel-card details-list-card">
+          <div class="panel-heading">
+            <span class="panel-title">即時環境指標</span>
+            <span class="panel-desc" id="stationCoords">25.04°N, 121.51°E</span>
+          </div>
+
+          <ul class="muji-metrics-list">
+            <li class="metric-row">
+              <span class="row-label">💨 平均風速</span>
+              <span class="row-val" id="metricWindSpeed">3.2 m/s <small>(11.5 km/h)</small></span>
+            </li>
+            <li class="metric-row">
+              <span class="row-label">🌪️ 最大瞬間陣風</span>
+              <span class="row-val" id="metricGustSpeed">5.8 m/s <small>(4級)</small></span>
+            </li>
+            <li class="metric-row">
+              <span class="row-label">💧 相對濕度</span>
+              <span class="row-val" id="metricHumidity">74%</span>
+            </li>
+            <li class="metric-row">
+              <span class="row-label">🧭 大氣壓力</span>
+              <span class="row-val" id="metricPressure">1011.2 hPa</span>
+            </li>
+            <li class="metric-row">
+              <span class="row-label">🌧️ 本日累積降雨</span>
+              <span class="row-val" id="metricRain">0.0 mm</span>
+            </li>
+            <li class="metric-row">
+              <span class="row-label">🍃 蒲福氏風級</span>
+              <span class="row-val" id="metricBeaufort">3 級 (微風)</span>
+            </li>
+          </ul>
+        </div>
+
+      </aside>
     </main>
 
-    <!-- 全臺 22 縣市觀測站卡片選擇區 -->
-    <section class="stations-section">
-      <div class="section-top-bar">
-        <h3 class="section-title">
-          <span>全臺觀測站即時切換</span>
-          <small style="font-size: 0.85rem; color: var(--text-secondary); font-weight: normal;">(點擊卡片切換風向與氣象)</small>
-        </h3>
-
-        <!-- 分區過濾與搜尋 -->
-        <div class="filter-controls">
-          <div class="region-tabs" id="regionTabs">
-            <button class="region-tab active" data-region="all">全臺灣 (22)</button>
-            <button class="region-tab" data-region="north">北部</button>
-            <button class="region-tab" data-region="central">中部</button>
-            <button class="region-tab" data-region="south">南部</button>
-            <button class="region-tab" data-region="east">東部</button>
-            <button class="region-tab" data-region="islands">離島</button>
-          </div>
-
-          <div class="search-wrap">
-            <svg class="search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <circle cx="11" cy="11" r="8"/>
-              <line x1="21" y1="21" x2="16.65" y2="16.65"/>
-            </svg>
-            <input type="text" class="search-input" id="searchInput" placeholder="搜尋縣市或測站..." aria-label="搜尋測站">
-          </div>
-        </div>
-      </div>
-
-      <!-- 測站卡片網格容器 -->
-      <div class="stations-grid" id="stationsGrid">
-        <!-- 由 js/app.js 動態渲染 -->
-      </div>
-    </section>
-
-    <!-- 頁尾宣告 -->
-    <footer class="footer">
-      <p>資料來源：<a href="https://opendata.cwa.gov.tw/" target="_blank" rel="noopener noreferrer">交通部中央氣象署開放資料平臺</a>（API: O-A0001-001 即時氣象觀測）</p>
-      <p>即時動態風場渲染引擎 • 60FPS 流線粒子流動模擬 • 支援全臺 22 縣市觀測站</p>
+    <!-- 頁尾 -->
+    <footer class="muji-footer">
+      <p>資料來源：交通部中央氣象署（CWA）開放資料平臺 • 即時觀測資料集 O-A0001-001</p>
+      <p>臺灣氣候誌 • 自然簡約的生活觀察 • 60FPS 動態風場流動模擬</p>
     </footer>
 
   </div>
 
-  <!-- 應用程式邏輯 -->
+  <!-- 應用腳本 -->
   <script src="js/weather-data.js"></script>
   <script src="js/wind-canvas.js"></script>
   <script src="js/app.js"></script>

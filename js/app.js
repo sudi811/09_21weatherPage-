@@ -1,66 +1,64 @@
 /**
- * Main Application Logic
- * Integrates WeatherService, WindCanvasEngine, UI bindings,
- * interactive station switching, search filtering, and live refresh.
+ * Main Application Controller - MUJI Weather Journal
+ * Coordinates the centered Taiwan interactive map, layer switcher,
+ * live wind flow canvas, 360° compass, and CWA open data API.
  */
 
 document.addEventListener('DOMContentLoaded', () => {
-  // 1. 初始化風場粒子繪圖引擎
+  // 1. 初始化和紙質感的風場粒子模擬引擎
   const windEngine = new WindCanvasEngine('windCanvas');
   window.windEngine = windEngine;
 
-  // 2. 狀態管理
+  // 2. 應用程式核心狀態
   let activeStationId = '466920'; // 預設：臺北
-  let currentRegion = 'all';
-  let searchQuery = '';
+  let activeLayer = 'temp';       // 'temp' | 'wind' | 'rain' | 'humidity'
+  let activeRegion = 'all';       // 'all' | 'north' | 'central' | 'south' | 'east' | 'islands'
 
-  // 3. 快取常用 DOM 節點
+  // 3. 快取 DOM 節點
   const dom = {
-    // 頂部狀態與操作
-    apiStatusBadge: document.getElementById('apiStatusBadge'),
-    apiStatusText: document.getElementById('apiStatusText'),
+    // 頂部導航
+    statusDot: document.getElementById('statusDot'),
+    statusLabel: document.getElementById('statusLabel'),
     lastUpdatedText: document.getElementById('lastUpdatedText'),
     btnRefresh: document.getElementById('btnRefresh'),
 
-    // 焦點測站氣候卡片
-    currentStationName: document.getElementById('currentStationName'),
+    // 地圖與標記層
+    mapLayerHint: document.getElementById('mapLayerHint'),
+    regionFilters: document.getElementById('regionFilters'),
+    markersLayer: document.getElementById('markersLayer'),
+
+    // 圖層切換 Tabs
+    layerTabs: document.getElementById('layerTabs'),
+
+    // 選定測站主卡片
     currentCountyName: document.getElementById('currentCountyName'),
+    currentStationName: document.getElementById('currentStationName'),
     weatherIcon: document.getElementById('weatherIcon'),
     weatherDesc: document.getElementById('weatherDesc'),
-    currentTemp: document.getElementById('currentTemp'),
-    feelsLikeTemp: document.getElementById('feelsLikeTemp'),
-    windChillDesc: document.getElementById('windChillDesc'),
-    stationCoords: document.getElementById('stationCoords'),
+    primaryMetricValue: document.getElementById('primaryMetricValue'),
+    primaryMetricUnit: document.getElementById('primaryMetricUnit'),
+    primaryMetricSub: document.getElementById('primaryMetricSub'),
+    mujiTipText: document.getElementById('mujiTipText'),
 
-    // 次要指標
+    // 360° 羅盤與風杯
+    windScaleBadge: document.getElementById('windScaleBadge'),
+    compassNeedle: document.getElementById('compassNeedle'),
+    anemometerRotor: document.getElementById('anemometerRotor'),
+    readoutDirection: document.getElementById('readoutDirection'),
+    readoutSpeedText: document.getElementById('readoutSpeedText'),
+
+    // 詳細指標清單
+    stationCoords: document.getElementById('stationCoords'),
     metricWindSpeed: document.getElementById('metricWindSpeed'),
-    metricWindSpeedKmh: document.getElementById('metricWindSpeedKmh'),
     metricGustSpeed: document.getElementById('metricGustSpeed'),
-    metricGustLevel: document.getElementById('metricGustLevel'),
     metricHumidity: document.getElementById('metricHumidity'),
     metricPressure: document.getElementById('metricPressure'),
     metricRain: document.getElementById('metricRain'),
-    metricRainDesc: document.getElementById('metricRainDesc'),
-    metricBeaufort: document.getElementById('metricBeaufort'),
-    metricBeaufortName: document.getElementById('metricBeaufortName'),
-
-    // 風向羅盤與旋轉風杯
-    compassNeedle: document.getElementById('compassNeedle'),
-    anemometerRotor: document.getElementById('anemometerRotor'),
-    compassCenterSpeed: document.getElementById('compassCenterSpeed'),
-    windScaleBadge: document.getElementById('windScaleBadge'),
-    readoutDirection: document.getElementById('readoutDirection'),
-    readoutSpeedText: document.getElementById('readoutSpeedText'),
-    readoutFlowStatus: document.getElementById('readoutFlowStatus'),
-
-    // 測站列表與篩選
-    regionTabs: document.getElementById('regionTabs'),
-    searchInput: document.getElementById('searchInput'),
-    stationsGrid: document.getElementById('stationsGrid')
+    metricBeaufort: document.getElementById('metricBeaufort')
   };
 
   /**
-   * 計算體感溫度 (Apparent Temperature, 澳洲氣象局簡化公式)
+   * 計算體感溫度
    */
   function calculateFeelsLike(temp, hum, windSpeed) {
     const e = (hum / 100) * 6.105 * Math.exp((17.27 * temp) / (237.7 + temp));
@@ -68,9 +66,6 @@ document.addEventListener('DOMContentLoaded', () => {
     return Math.round(feelsLike * 10) / 10;
   }
 
-  /**
-   * 依天氣描述對應 Emoji 圖示
-   */
   function getWeatherIcon(weather) {
     if (!weather) return '🌤️';
     if (weather.includes('雷')) return '⛈️';
@@ -82,186 +77,165 @@ document.addEventListener('DOMContentLoaded', () => {
     return '🌤️';
   }
 
-  /**
-   * 格式化更新時間
-   */
-  function formatUpdateTime(date) {
-    const hours = String(date.getHours()).padStart(2, '0');
-    const mins = String(date.getMinutes()).padStart(2, '0');
-    const secs = String(date.getSeconds()).padStart(2, '0');
-    return `${hours}:${mins}:${secs}`;
+  function formatTime(date) {
+    const h = String(date.getHours()).padStart(2, '0');
+    const m = String(date.getMinutes()).padStart(2, '0');
+    return `${h}:${m}`;
   }
 
   /**
-   * 渲染焦點測站詳細資料與羅盤動態
+   * 根據當前圖層格式化地圖標籤文字
    */
-  function renderActiveStation() {
-    const station = window.weatherService.getStationById(activeStationId);
-    if (!station) return;
-
-    // 基本資訊
-    dom.currentStationName.textContent = station.name;
-    dom.currentCountyName.textContent = station.county;
-    dom.currentTemp.textContent = station.temp.toFixed(1);
-    dom.weatherIcon.textContent = getWeatherIcon(station.weather);
-    dom.weatherDesc.textContent = station.weather;
-    dom.stationCoords.textContent = `${station.lat.toFixed(2)}°N, ${station.lon.toFixed(2)}°E`;
-
-    // 體感溫度
-    const feelsLike = calculateFeelsLike(station.temp, station.hum, station.windSpeed);
-    dom.feelsLikeTemp.textContent = `${feelsLike.toFixed(1)}°C`;
-
-    // 風力等級與描述
-    const dirInfo = window.getWindDirectionText(station.windDeg);
-    const beaufort = window.getBeaufortScale(station.windSpeed);
-    const gustBeaufort = window.getBeaufortScale(station.gust);
-
-    dom.windChillDesc.textContent = `${beaufort.level} · ${beaufort.desc.split('，')[0]}`;
-
-    // 6 大指標
-    dom.metricWindSpeed.innerHTML = `${station.windSpeed.toFixed(1)} <small style="font-size: 0.8rem; font-weight: normal;">m/s</small>`;
-    dom.metricWindSpeedKmh.textContent = `${(station.windSpeed * 3.6).toFixed(1)} km/h`;
-
-    dom.metricGustSpeed.innerHTML = `${station.gust.toFixed(1)} <small style="font-size: 0.8rem; font-weight: normal;">m/s</small>`;
-    dom.metricGustLevel.textContent = `${gustBeaufort.scale}級陣風 (${gustBeaufort.level})`;
-
-    dom.metricHumidity.textContent = `${station.hum}%`;
-    dom.metricPressure.innerHTML = `${station.pres.toFixed(1)} <small style="font-size: 0.75rem; font-weight: normal;">hPa</small>`;
-    dom.metricRain.innerHTML = `${station.rain.toFixed(1)} <small style="font-size: 0.8rem; font-weight: normal;">mm</small>`;
-    dom.metricRainDesc.textContent = station.rain > 0 ? `累積雨量 ${station.rain}mm` : '目前無降雨';
-
-    dom.metricBeaufort.textContent = `${beaufort.scale} 級`;
-    dom.metricBeaufortName.textContent = `${beaufort.level} (${beaufort.desc.split('，')[0]})`;
-
-    // =========================================================================
-    // 羅盤與風杯即時動態更新
-    // =========================================================================
-    // 1. 旋轉羅盤指針至真實風向角
-    dom.compassNeedle.style.transform = `rotate(${station.windDeg}deg)`;
-
-    // 2. 羅盤風杯旋轉速度與真實風速動態綁定 (風速愈快，旋轉週期愈短)
-    // 週期公式：baseDuration = 6 / max(0.4, speed) 秒
-    const spinDuration = Math.max(0.2, 5.0 / Math.max(station.windSpeed, 0.5));
-    dom.anemometerRotor.style.animationDuration = `${spinDuration.toFixed(2)}s`;
-    dom.compassCenterSpeed.textContent = station.windSpeed.toFixed(1);
-
-    // 3. 羅盤徽章與文字
-    dom.windScaleBadge.textContent = `${beaufort.scale}級 ${beaufort.level}`;
-    dom.windScaleBadge.style.backgroundColor = beaufort.color;
-    dom.windScaleBadge.style.boxShadow = `0 0 14px ${beaufort.color}66`;
-
-    dom.readoutDirection.textContent = `${dirInfo.name} (${station.windDeg}°)`;
-    dom.readoutSpeedText.textContent = `${station.windSpeed.toFixed(1)} m/s (${(station.windSpeed * 3.6).toFixed(1)} km/h)`;
-
-    if (station.windSpeed < 2.0) {
-      dom.readoutFlowStatus.textContent = '微弱微風';
-      dom.readoutFlowStatus.style.color = '#38bdf8';
-    } else if (station.windSpeed < 8.0) {
-      dom.readoutFlowStatus.textContent = '氣流順暢';
-      dom.readoutFlowStatus.style.color = '#10b981';
-    } else {
-      dom.readoutFlowStatus.textContent = '強勁氣流';
-      dom.readoutFlowStatus.style.color = '#f59e0b';
+  function getLayerValueForStation(st, layer) {
+    switch (layer) {
+      case 'temp':
+        return `${st.temp.toFixed(1)}°`;
+      case 'wind':
+        return `${st.windSpeed.toFixed(1)}m`;
+      case 'rain':
+        return `${st.rain.toFixed(1)}mm`;
+      case 'humidity':
+        return `${st.hum}%`;
+      default:
+        return `${st.temp.toFixed(1)}°`;
     }
-
-    // 4. 同步更新背景 Canvas 2D 風場粒子流向與流速
-    windEngine.setWind(station.windDeg, station.windSpeed);
   }
 
   /**
-   * 渲染下方全臺觀測站卡片網格
+   * 渲染地圖上的測站互動標記節點
    */
-  function renderStationsGrid() {
-    dom.stationsGrid.innerHTML = '';
+  function renderMapMarkers() {
+    dom.markersLayer.innerHTML = '';
+    const stations = window.weatherService.stations;
 
-    // 取得符合當前分區的測站
-    let filtered = window.weatherService.getStationsByRegion(currentRegion);
+    stations.forEach(st => {
+      // 若有分區篩選，非目標分區淡出或隱藏
+      const isVisible = activeRegion === 'all' || st.region === activeRegion;
 
-    // 搜尋關鍵字過濾
-    if (searchQuery.trim()) {
-      const q = searchQuery.trim().toLowerCase();
-      filtered = filtered.filter(s => 
-        s.name.toLowerCase().includes(q) || 
-        s.county.toLowerCase().includes(q)
-      );
-    }
+      const node = document.createElement('div');
+      node.className = `station-node ${st.id === activeStationId ? 'active' : ''}`;
+      node.style.left = `${st.mapX}%`;
+      node.style.top = `${st.mapY}%`;
+      node.style.display = isVisible ? 'flex' : 'none';
+      node.setAttribute('role', 'button');
+      node.setAttribute('tabindex', '0');
+      node.setAttribute('title', `${st.county} · ${st.name}`);
 
-    if (filtered.length === 0) {
-      dom.stationsGrid.innerHTML = `
-        <div style="grid-column: 1 / -1; text-align: center; padding: 40px; color: var(--text-muted);">
-          找不到名稱符合「${searchQuery}」的觀測站
-        </div>
-      `;
-      return;
-    }
+      const layerValText = getLayerValueForStation(st, activeLayer);
 
-    filtered.forEach(st => {
-      const card = document.createElement('div');
-      card.className = `station-card ${st.id === activeStationId ? 'active' : ''}`;
-      card.setAttribute('role', 'button');
-      card.setAttribute('tabindex', '0');
-      card.setAttribute('aria-label', `選擇 ${st.county} ${st.name} 觀測站`);
-
-      const dirInfo = window.getWindDirectionText(st.windDeg);
-
-      card.innerHTML = `
-        <div class="card-top">
-          <span class="card-station-name">${st.name}</span>
-          <span class="card-county">${st.county}</span>
-        </div>
-        <div class="card-middle">
-          <span class="card-temp">${st.temp.toFixed(1)}<small style="font-size: 1rem; color: var(--accent-cyan);">°C</small></span>
-          <span class="card-weather">${getWeatherIcon(st.weather)} ${st.weather}</span>
-        </div>
-        <div class="card-bottom">
-          <div class="card-wind-info">
-            <span class="card-wind-arrow" style="transform: rotate(${st.windDeg}deg);" title="風向: ${st.windDeg}°">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-                <line x1="12" y1="19" x2="12" y2="5"/>
-                <polyline points="5 12 12 5 19 12"/>
-              </svg>
-            </span>
-            <span>${dirInfo.name}</span>
-          </div>
-          <span style="font-weight: 600; color: var(--text-primary);">${st.windSpeed.toFixed(1)} m/s</span>
+      node.innerHTML = `
+        <span class="node-dot"></span>
+        <div class="node-pill">
+          <span class="node-name">${st.name}</span>
+          <span class="node-arrow" style="transform: rotate(${st.windDeg}deg);">
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
+              <line x1="12" y1="19" x2="12" y2="5"/>
+              <polyline points="5 12 12 5 19 12"/>
+            </svg>
+          </span>
+          <span class="node-val">${layerValText}</span>
         </div>
       `;
 
-      card.addEventListener('click', () => {
+      node.addEventListener('click', () => {
         if (activeStationId !== st.id) {
           activeStationId = st.id;
-          renderActiveStation();
-          updateCardSelection();
+          updateActiveMarker();
+          renderSidebarDetails();
         }
       });
 
-      card.addEventListener('keydown', (e) => {
-        if (e.key === 'Enter' || e.key === ' ') {
-          e.preventDefault();
-          activeStationId = st.id;
-          renderActiveStation();
-          updateCardSelection();
-        }
-      });
-
-      dom.stationsGrid.appendChild(card);
+      dom.markersLayer.appendChild(node);
     });
   }
 
-  function updateCardSelection() {
-    const allCards = dom.stationsGrid.querySelectorAll('.station-card');
-    const filtered = window.weatherService.getStationsByRegion(currentRegion);
-    allCards.forEach((c, idx) => {
-      if (filtered[idx] && filtered[idx].id === activeStationId) {
-        c.classList.add('active');
+  function updateActiveMarker() {
+    const allNodes = dom.markersLayer.querySelectorAll('.station-node');
+    const stations = window.weatherService.stations;
+    allNodes.forEach((node, idx) => {
+      if (stations[idx] && stations[idx].id === activeStationId) {
+        node.classList.add('active');
       } else {
-        c.classList.remove('active');
+        node.classList.remove('active');
       }
     });
   }
 
   /**
-   * 執行數據更新 (呼叫 CWA API)
+   * 渲染右側詳細資料面板
+   */
+  function renderSidebarDetails() {
+    const st = window.weatherService.getStationById(activeStationId);
+    if (!st) return;
+
+    // 1. 測站抬頭與天氣
+    dom.currentCountyName.textContent = st.county;
+    dom.currentStationName.textContent = `${st.name}站`;
+    dom.weatherIcon.textContent = getWeatherIcon(st.weather);
+    dom.weatherDesc.textContent = st.weather;
+
+    // 2. 依當前選定圖層更新主指標數值與說明
+    const dirInfo = window.getWindDirectionText(st.windDeg);
+    const beaufort = window.getBeaufortScale(st.windSpeed);
+    const feelsLike = calculateFeelsLike(st.temp, st.hum, st.windSpeed);
+
+    switch (activeLayer) {
+      case 'temp':
+        dom.primaryMetricValue.textContent = st.temp.toFixed(1);
+        dom.primaryMetricUnit.textContent = '°C';
+        dom.primaryMetricSub.textContent = `體感溫度 ${feelsLike.toFixed(1)}°C · ${st.weather}`;
+        dom.mapLayerHint.textContent = '目前顯示：即時氣溫圖層 (°C)';
+        break;
+      case 'wind':
+        dom.primaryMetricValue.textContent = st.windSpeed.toFixed(1);
+        dom.primaryMetricUnit.textContent = 'm/s';
+        dom.primaryMetricSub.textContent = `${dirInfo.name} (${st.windDeg}°) · 蒲福氏 ${beaufort.scale}級 ${beaufort.level}`;
+        dom.mapLayerHint.textContent = '目前顯示：風向與風速圖層 (m/s)';
+        break;
+      case 'rain':
+        dom.primaryMetricValue.textContent = st.rain.toFixed(1);
+        dom.primaryMetricUnit.textContent = 'mm';
+        dom.primaryMetricSub.textContent = st.rain > 0 ? `本日降雨 ${st.rain}mm` : '本日尚無降雨記錄，天空舒適';
+        dom.mapLayerHint.textContent = '目前顯示：本日累積降雨量 (mm)';
+        break;
+      case 'humidity':
+        dom.primaryMetricValue.textContent = st.hum;
+        dom.primaryMetricUnit.textContent = '%';
+        dom.primaryMetricSub.textContent = `相對濕度 ${st.hum}% · 大氣壓力 ${st.pres.toFixed(1)} hPa`;
+        dom.mapLayerHint.textContent = '目前顯示：相對濕度圖層 (%)';
+        break;
+    }
+
+    // 3. 無印生活小籤
+    dom.mujiTipText.textContent = window.getMujiLifestyleTip(st.temp, st.windSpeed, st.rain, st.hum);
+
+    // 4. 360° 羅盤與風杯即時動態
+    dom.compassNeedle.style.transform = `rotate(${st.windDeg}deg)`;
+    const spinDuration = Math.max(0.3, 5.5 / Math.max(st.windSpeed, 0.5));
+    dom.anemometerRotor.style.animationDuration = `${spinDuration.toFixed(2)}s`;
+
+    dom.windScaleBadge.textContent = `${beaufort.scale}級 ${beaufort.level}`;
+    dom.windScaleBadge.style.color = beaufort.color;
+    dom.windScaleBadge.style.borderColor = `${beaufort.color}44`;
+
+    dom.readoutDirection.textContent = `${dirInfo.name} ${st.windDeg}°`;
+    dom.readoutSpeedText.textContent = `${st.windSpeed.toFixed(1)} m/s`;
+
+    // 5. 連動背景 Canvas 2D 粒子風向與流速
+    windEngine.setWind(st.windDeg, st.windSpeed);
+
+    // 6. 詳細指標清單
+    dom.stationCoords.textContent = `${st.lat.toFixed(2)}°N, ${st.lon.toFixed(2)}°E`;
+    dom.metricWindSpeed.innerHTML = `${st.windSpeed.toFixed(1)} m/s <small>(${(st.windSpeed * 3.6).toFixed(1)} km/h)</small>`;
+    dom.metricGustSpeed.innerHTML = `${st.gust.toFixed(1)} m/s <small>(${window.getBeaufortScale(st.gust).scale}級)</small>`;
+    dom.metricHumidity.textContent = `${st.hum}%`;
+    dom.metricPressure.textContent = `${st.pres.toFixed(1)} hPa`;
+    dom.metricRain.textContent = `${st.rain.toFixed(1)} mm`;
+    dom.metricBeaufort.textContent = `${beaufort.scale} 級 (${beaufort.level})`;
+  }
+
+  /**
+   * 從氣象署 API 重新取得即時數據
    */
   async function refreshData() {
     dom.btnRefresh.classList.add('spinning');
@@ -269,66 +243,66 @@ document.addEventListener('DOMContentLoaded', () => {
 
     try {
       const res = await window.weatherService.fetchLiveStations();
-      
       if (res.isLive) {
-        dom.apiStatusBadge.style.backgroundColor = 'rgba(16, 185, 129, 0.12)';
-        dom.apiStatusBadge.style.borderColor = 'rgba(16, 185, 129, 0.3)';
-        dom.apiStatusBadge.querySelector('.pulse-dot').style.backgroundColor = '#34d399';
-        dom.apiStatusText.textContent = '即時同步中 (CWA)';
+        dom.statusDot.style.backgroundColor = 'var(--muji-sage)';
+        dom.statusLabel.textContent = '即時連線 (CWA)';
       } else {
-        dom.apiStatusBadge.style.backgroundColor = 'rgba(56, 189, 248, 0.12)';
-        dom.apiStatusBadge.style.borderColor = 'rgba(56, 189, 248, 0.3)';
-        dom.apiStatusBadge.querySelector('.pulse-dot').style.backgroundColor = '#38bdf8';
-        dom.apiStatusText.textContent = '快取備用模式';
+        dom.statusDot.style.backgroundColor = 'var(--muji-ochre)';
+        dom.statusLabel.textContent = '快取備用模式';
       }
 
-      dom.lastUpdatedText.textContent = `更新時間: ${formatUpdateTime(window.weatherService.lastUpdated)}`;
-      renderActiveStation();
-      renderStationsGrid();
+      dom.lastUpdatedText.textContent = `更新: ${formatTime(window.weatherService.lastUpdated)}`;
+      renderMapMarkers();
+      renderSidebarDetails();
     } catch (err) {
       console.error('更新失敗:', err);
     } finally {
       setTimeout(() => {
         dom.btnRefresh.classList.remove('spinning');
         dom.btnRefresh.disabled = false;
-      }, 600);
+      }, 500);
     }
   }
 
   // =========================================================================
-  // 事件監聽與綁定
+  // 事件監聽
   // =========================================================================
-  // 手動點擊刷新按鈕
+  // 1. 圖層切換 (Layer Tabs)
+  dom.layerTabs.addEventListener('click', (e) => {
+    const tab = e.target.closest('.layer-tab');
+    if (!tab) return;
+    dom.layerTabs.querySelectorAll('.layer-tab').forEach(t => t.classList.remove('active'));
+    tab.classList.add('active');
+    activeLayer = tab.dataset.layer;
+    renderMapMarkers();
+    renderSidebarDetails();
+  });
+
+  // 2. 地圖分區快篩
+  dom.regionFilters.addEventListener('click', (e) => {
+    const chip = e.target.closest('.filter-chip');
+    if (!chip) return;
+    dom.regionFilters.querySelectorAll('.filter-chip').forEach(c => c.classList.remove('active'));
+    chip.classList.add('active');
+    activeRegion = chip.dataset.region;
+    renderMapMarkers();
+  });
+
+  // 3. 手動更新按鈕
   dom.btnRefresh.addEventListener('click', () => {
     refreshData();
   });
 
-  // 分區切換
-  dom.regionTabs.addEventListener('click', (e) => {
-    const tab = e.target.closest('.region-tab');
-    if (!tab) return;
-    dom.regionTabs.querySelectorAll('.region-tab').forEach(t => t.classList.remove('active'));
-    tab.classList.add('active');
-    currentRegion = tab.dataset.region;
-    renderStationsGrid();
-  });
-
-  // 搜尋框即時過濾
-  dom.searchInput.addEventListener('input', (e) => {
-    searchQuery = e.target.value;
-    renderStationsGrid();
-  });
-
   // =========================================================================
-  // 初始啟動
+  // 初始掛載
   // =========================================================================
-  dom.lastUpdatedText.textContent = `更新時間: ${formatUpdateTime(new Date())}`;
-  renderActiveStation();
-  renderStationsGrid();
+  dom.lastUpdatedText.textContent = `更新: ${formatTime(new Date())}`;
+  renderMapMarkers();
+  renderSidebarDetails();
 
-  // 自動在背景嘗試連接氣象署 API
+  // 背景嘗試非同步抓取中央氣象署最新測站資料
   refreshData();
 
-  // 每 5 分鐘自動刷新一次數據
+  // 每 5 分鐘自動刷新
   setInterval(refreshData, 5 * 60 * 1000);
 });
