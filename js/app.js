@@ -13,17 +13,38 @@ document.addEventListener('DOMContentLoaded', () => {
   // 2. 應用狀態管理
   let activeStationId = '466920'; // 預設：臺北
   let activeLayer = 'wind';        // 預設為使用者要求的風速 'wind' | 'radar' | 'temp' | 'accumRain'
-  let activeRegion = 'all';        // 'all' | 'north' | 'central' | 'south' | 'east' | 'islands'
+  let activeRegion = 'all';
 
-  // 地圖平移與縮放狀態 (如同 Google Maps 自由縮放與平移)
-  let zoomLevel = 1.0;
-  let panX = 0;
-  let panY = 0;
-  let isDragging = false;
-  let startX = 0;
-  let startY = 0;
+  // 3. 初始化開源 GIS 框架 Leaflet 地圖 (臺灣真實地理比例居中)
+  // 臺灣中心大約 [23.7, 120.95]，縮放層級 7.8 ~ 8.0 完美填滿 70% 視圖
+  const leafletMap = L.map('leafletMap', {
+    center: [23.7, 120.95],
+    zoom: 8,
+    minZoom: 6,
+    maxZoom: 14,
+    zoomControl: false, // 使用自訂 Google 風格浮動按鈕
+    attributionControl: true
+  });
+  window.leafletMap = leafletMap;
 
-  // 3. 快取 DOM 節點
+  // 採用 Google Maps / CartoDB 高質感大地灰與清新海洋底圖 (亦可切換 OpenStreetMap)
+  L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
+    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
+    subdomains: 'abcd',
+    maxZoom: 19
+  }).addTo(leafletMap);
+
+  // 快取 Leaflet Markers 標記物件
+  const markersMap = new Map();
+
+  // Leaflet 地圖平移縮放時，同步告知 Windy 粒子引擎更新
+  leafletMap.on('zoom move', () => {
+    const center = leafletMap.getCenter();
+    const zoom = leafletMap.getZoom();
+    windEngine.setTransform(center.lng, center.lat, zoom);
+  });
+
+  // 4. 快取 DOM 節點
   const dom = {
     // 頂部搜尋與狀態
     gmapSearchInput: document.getElementById('gmapSearchInput'),
@@ -35,24 +56,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // 地圖與視圖
     mapFrame: document.getElementById('mapFrame'),
-    mapStage: document.getElementById('mapStage'),
     weatherOverlay: document.getElementById('weatherOverlay'),
     layerSelectorGrid: document.getElementById('layerSelectorGrid'),
     currentLayerHint: document.getElementById('currentLayerHint'),
     scaleUnit: document.getElementById('scaleUnit'),
     scaleBlocksWrap: document.getElementById('scaleBlocksWrap'),
-    pinsLayer: document.getElementById('pinsLayer'),
-
-    // Google InfoWindow 氣泡窗
-    googleInfoWindow: document.getElementById('googleInfoWindow'),
-    infoCounty: document.getElementById('infoCounty'),
-    infoTitle: document.getElementById('infoTitle'),
-    infoTemp: document.getElementById('infoTemp'),
-    infoWeather: document.getElementById('infoWeather'),
-    infoWind: document.getElementById('infoWind'),
-    infoRain: document.getElementById('infoRain'),
-    infoHum: document.getElementById('infoHum'),
-    infoCloseBtn: document.getElementById('infoCloseBtn'),
 
     // 地圖縮放控制器
     btnZoomIn: document.getElementById('btnZoomIn'),
@@ -105,7 +113,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // 更新大氣疊層色彩
     if (dom.weatherOverlay) {
       dom.weatherOverlay.style.background = layer.overlayGradient || 'transparent';
-      dom.weatherOverlay.style.opacity = layerId === 'wind' ? '0.4' : '0.75';
+      dom.weatherOverlay.style.opacity = layerId === 'wind' ? '0.35' : '0.65';
     }
   }
 
@@ -141,7 +149,6 @@ document.addEventListener('DOMContentLoaded', () => {
   function getLayerValueForStation(st, layer) {
     switch (layer) {
       case 'radar':
-        // 估算雷達回波值
         return st.rain > 0 ? `${Math.min(55, Math.round(st.rain * 12 + 25))} dBZ` : '15 dBZ';
       case 'temp':
         return `${st.temp.toFixed(1)}°C`;
@@ -155,28 +162,12 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   /**
-   * 渲染地圖上的 Google 水滴 Pin 標記
+   * 建立 Google 經典紅色水滴 Drop-Pin HTML
    */
-  function renderMapPins() {
-    dom.pinsLayer.innerHTML = '';
-    const stations = window.weatherService.stations;
-
-    stations.forEach(st => {
-      const isVisible = activeRegion === 'all' || st.region === activeRegion;
-      const isActive = st.id === activeStationId;
-
-      const pinNode = document.createElement('div');
-      pinNode.className = `g-pin-node ${isActive ? 'active' : ''}`;
-      pinNode.id = `pin-${st.id}`;
-      pinNode.style.left = `${st.mapX}%`;
-      pinNode.style.top = `${st.mapY}%`;
-      pinNode.style.display = isVisible ? 'flex' : 'none';
-      pinNode.setAttribute('title', `${st.county} · ${st.name}氣象站`);
-
-      const layerText = getLayerValueForStation(st, activeLayer);
-
-      // 經典 Google 水滴 Pin SVG 結構
-      pinNode.innerHTML = `
+  function createPinHtml(st, isActive) {
+    const layerText = getLayerValueForStation(st, activeLayer);
+    return `
+      <div class="g-pin-node ${isActive ? 'active' : ''}">
         <div class="g-pin-label">
           <span class="label-station">${st.name}</span>
           <span class="label-wind-arrow" style="transform: rotate(${st.windDeg}deg);">
@@ -192,70 +183,109 @@ document.addEventListener('DOMContentLoaded', () => {
           <circle cx="14" cy="14" r="5.5" fill="#FFFFFF"/>
         </svg>
         <div class="pin-shadow"></div>
-      `;
-
-      pinNode.addEventListener('click', (e) => {
-        e.stopPropagation();
-        selectStation(st.id);
-      });
-
-      dom.pinsLayer.appendChild(pinNode);
-    });
-
-    // 若有選取測站，更新 InfoWindow 位置
-    positionInfoWindow();
-  }
-
-  function selectStation(stationId) {
-    activeStationId = stationId;
-
-    // 更新 Pin 活躍狀態
-    const allPins = dom.pinsLayer.querySelectorAll('.g-pin-node');
-    const stations = window.weatherService.stations;
-    allPins.forEach((node, idx) => {
-      if (stations[idx] && stations[idx].id === activeStationId) {
-        node.classList.add('active');
-      } else {
-        node.classList.remove('active');
-      }
-    });
-
-    renderSidebarPlaceDetails();
-    showInfoWindow();
+      </div>
+    `;
   }
 
   /**
-   * 顯示並定位 Google Maps InfoWindow 氣泡窗
+   * 建立 Google Maps InfoWindow 氣泡窗 HTML
    */
-  function showInfoWindow() {
-    const st = window.weatherService.getStationById(activeStationId);
-    if (!st) return;
-
+  function createPopupHtml(st) {
     const dirInfo = window.getWindDirectionText(st.windDeg);
     const feelsLike = calculateFeelsLike(st.temp, st.hum, st.windSpeed);
 
-    dom.infoCounty.textContent = st.county;
-    dom.infoTitle.textContent = `${st.name}氣象站`;
-    dom.infoTemp.textContent = `${st.temp.toFixed(1)}°C`;
-    dom.infoWeather.textContent = `${getWeatherIcon(st.weather)} ${st.weather}`;
-    dom.infoWind.textContent = `${dirInfo.name} ${st.windSpeed.toFixed(1)}m/s`;
-    dom.infoRain.textContent = `${st.rain.toFixed(1)} mm`;
-    dom.infoHum.textContent = `${st.hum}%`;
-    dom.infoComfort.textContent = `體感 ${feelsLike.toFixed(1)}°C`;
-
-    positionInfoWindow();
-    dom.googleInfoWindow.style.display = 'block';
+    return `
+      <div class="leaflet-custom-popup">
+        <div class="info-header">
+          <div>
+            <span class="info-county">${st.county}</span>
+            <h4 class="info-title">${st.name}氣象站</h4>
+          </div>
+        </div>
+        <div class="info-body">
+          <div class="info-temp-row">
+            <span class="info-temp">${st.temp.toFixed(1)}°C</span>
+            <span class="info-weather">${getWeatherIcon(st.weather)} ${st.weather}</span>
+          </div>
+          <div class="info-stats-grid">
+            <div class="info-stat">
+              <span>風向風速</span>
+              <strong>${dirInfo.name} ${st.windSpeed.toFixed(1)}m/s</strong>
+            </div>
+            <div class="info-stat">
+              <span>降雨量</span>
+              <strong>${st.rain.toFixed(1)} mm</strong>
+            </div>
+            <div class="info-stat">
+              <span>相對濕度</span>
+              <strong>${st.hum}%</strong>
+            </div>
+            <div class="info-stat">
+              <span>體感溫度</span>
+              <strong>${feelsLike.toFixed(1)}°C</strong>
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
   }
 
-  function positionInfoWindow() {
-    const st = window.weatherService.getStationById(activeStationId);
-    if (!st) return;
-    dom.googleInfoWindow.style.left = `${st.mapX}%`;
-    dom.googleInfoWindow.style.top = `${st.mapY}%`;
+  /**
+   * 渲染 Leaflet 地圖上的所有測站標記
+   */
+  function renderMapPins() {
+    const stations = window.weatherService.stations;
+
+    stations.forEach(st => {
+      const isActive = st.id === activeStationId;
+      const html = createPinHtml(st, isActive);
+
+      const customIcon = L.divIcon({
+        html: html,
+        className: 'leaflet-custom-marker',
+        iconSize: [60, 48],
+        iconAnchor: [30, 48],
+        popupAnchor: [0, -48]
+      });
+
+      if (markersMap.has(st.id)) {
+        const marker = markersMap.get(st.id);
+        marker.setIcon(customIcon);
+        marker.setPopupContent(createPopupHtml(st));
+      } else {
+        const marker = L.marker([st.lat, st.lon], { icon: customIcon }).addTo(leafletMap);
+        marker.bindPopup(createPopupHtml(st));
+
+        marker.on('click', () => {
+          selectStation(st.id, false);
+        });
+
+        markersMap.set(st.id, marker);
+      }
+    });
+
+    // 預設若有活躍測站，開啟彈窗
+    const activeMarker = markersMap.get(activeStationId);
+    if (activeMarker && !activeMarker.isPopupOpen()) {
+      activeMarker.openPopup();
+    }
   }
 
-  function hideInfoWindow() {
-    dom.googleInfoWindow.style.display = 'none';
+  function selectStation(stationId, panTo = true) {
+    activeStationId = stationId;
+    const st = window.weatherService.getStationById(stationId);
+
+    if (panTo && st && leafletMap) {
+      leafletMap.flyTo([st.lat, st.lon], Math.max(leafletMap.getZoom(), 9), { duration: 0.8 });
+    }
+
+    renderMapPins();
+    renderSidebarPlaceDetails();
+
+    const marker = markersMap.get(stationId);
+    if (marker) {
+      marker.openPopup();
+    }
   }
 
   /**
@@ -331,26 +361,18 @@ document.addEventListener('DOMContentLoaded', () => {
   /**
    * 地圖縮放與平移變換
    */
-  function applyTransform() {
-    dom.mapStage.style.transform = `translate(${panX}px, ${panY}px) scale(${zoomLevel})`;
-    windEngine.setTransform(panX, panY, zoomLevel);
-  }
-
   function zoomIn() {
-    zoomLevel = Math.min(2.5, Math.round((zoomLevel + 0.25) * 100) / 100);
-    applyTransform();
+    if (leafletMap) leafletMap.zoomIn();
   }
 
   function zoomOut() {
-    zoomLevel = Math.max(0.75, Math.round((zoomLevel - 0.25) * 100) / 100);
-    applyTransform();
+    if (leafletMap) leafletMap.zoomOut();
   }
 
   function resetView() {
-    zoomLevel = 1.0;
-    panX = 0;
-    panY = 0;
-    applyTransform();
+    if (leafletMap) {
+      leafletMap.flyTo([23.7, 120.95], 8, { duration: 1.0 });
+    }
   }
 
   /**
@@ -396,8 +418,7 @@ document.addEventListener('DOMContentLoaded', () => {
     );
 
     if (matched) {
-      selectStation(matched.id);
-      renderMapPins();
+      selectStation(matched.id, true);
     } else {
       alert(`找不到與「${query}」相符的測站，請嘗試搜尋其他縣市名稱。`);
     }
@@ -432,25 +453,11 @@ document.addEventListener('DOMContentLoaded', () => {
   dom.btnZoomOut.addEventListener('click', zoomOut);
   dom.btnRecenter.addEventListener('click', resetView);
 
-  // 4. 滑鼠滾輪縮放 (Like Google Maps Wheel Zoom)
-  dom.mapFrame.addEventListener('wheel', (e) => {
-    e.preventDefault();
-    const delta = e.deltaY < 0 ? 0.15 : -0.15;
-    zoomLevel = Math.max(0.75, Math.min(2.6, Math.round((zoomLevel + delta) * 100) / 100));
-    applyTransform();
-  }, { passive: false });
-
-  // 5. InfoWindow 關閉
-  dom.infoCloseBtn.addEventListener('click', (e) => {
-    e.stopPropagation();
-    hideInfoWindow();
-  });
-
-  // 6. 手動刷新按鈕
+  // 4. 手動刷新按鈕
   dom.btnRefresh.addEventListener('click', refreshData);
   dom.btnQuickRefresh.addEventListener('click', refreshData);
 
-  // 7. 複製分享數據
+  // 5. 複製分享數據
   dom.btnCopyData.addEventListener('click', () => {
     const st = window.weatherService.getStationById(activeStationId);
     if (!st) return;
@@ -462,31 +469,6 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   });
 
-  // 8. 滑鼠拖曳地圖平移 (Drag to Pan like Google Maps)
-  dom.mapFrame.addEventListener('mousedown', (e) => {
-    if (e.target.closest('.g-pin-node') || e.target.closest('.gmap-infowindow') || e.target.closest('.gmap-controls')) {
-      return;
-    }
-    isDragging = true;
-    startX = e.clientX - panX;
-    startY = e.clientY - panY;
-    dom.mapFrame.style.cursor = 'grabbing';
-  });
-
-  window.addEventListener('mousemove', (e) => {
-    if (!isDragging) return;
-    panX = e.clientX - startX;
-    panY = e.clientY - startY;
-    applyTransform();
-  });
-
-  window.addEventListener('mouseup', () => {
-    if (isDragging) {
-      isDragging = false;
-      dom.mapFrame.style.cursor = 'default';
-    }
-  });
-
   // =========================================================================
   // 初始啟動
   // =========================================================================
@@ -494,7 +476,13 @@ document.addEventListener('DOMContentLoaded', () => {
   renderColorScale(activeLayer);
   renderMapPins();
   renderSidebarPlaceDetails();
-  showInfoWindow();
+
+  // 確保 Leaflet 容器尺寸正確運算
+  setTimeout(() => {
+    if (leafletMap) {
+      leafletMap.invalidateSize();
+    }
+  }, 250);
 
   // 背景自動與 CWA API 同步
   refreshData();

@@ -5,6 +5,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="description" content="臺灣即時氣象地圖 — 70%真實比例可縮放地圖，結合 Windy 動態風場流線粒子動畫與氣象雷達、溫度、風速、累積雨量圖層切換。">
   <title>臺灣即時氣候地圖 | Real-Scale Weather & Wind Flow</title>
+  <!-- Leaflet GIS 開源地圖框架 -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
   <link rel="stylesheet" href="style.css">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='50' cy='50' r='50' fill='%23EA4335'/><text x='50%' y='68%' font-size='50' font-weight='bold' fill='white' text-anchor='middle'>📍</text></svg>">
 </head>
@@ -60,169 +63,19 @@
     <main class="gmap-main-grid">
 
       <!-- ====================================================================
-           主視覺 (佔螢幕 70%)：真實比例可縮放地圖 + Windy 風場粒子動畫
+           主視覺 (佔螢幕 70%)：Leaflet 真實比例可縮放地圖 + Windy 風場粒子動畫
            ==================================================================== -->
       <section class="gmap-viewport-section">
         <div class="gmap-frame" id="mapFrame">
           
+          <!-- Leaflet 地圖容器 (真實比例、居中臺灣、OpenStreetMap/CartoDB 向量地圖瓦片) -->
+          <div id="leafletMap" class="leaflet-map-stage"></div>
+
           <!-- 大氣熱力漸層層 (雷達/溫度/降雨) -->
           <div class="map-weather-overlay" id="weatherOverlay"></div>
 
-          <!-- Windy 風格動態風場流線粒子 Canvas -->
+          <!-- Windy 風格動態風場流線粒子 Canvas (置於 Leaflet 瓦片上方，滑鼠穿透) -->
           <canvas id="windCanvas"></canvas>
-
-          <!-- 可縮放平移的地圖舞台 (支援滑鼠滾輪與拖曳) -->
-          <div class="map-stage" id="mapStage">
-            
-            <!-- 真實比例臺灣與海峽向量底圖 (臺灣放中間) -->
-            <svg class="gmap-taiwan-svg" viewBox="0 0 1000 800" xmlns="http://www.w3.org/2000/svg">
-              <!-- 海洋底色已在 CSS 中設定為 #AADAFF -->
-
-              <!-- 經緯度參考線 (22°N ~ 26°N, 118°E ~ 122°E) -->
-              <g class="grid-lines" stroke="#B8D7ED" stroke-width="1" stroke-dasharray="4,6">
-                <line x1="100" y1="180" x2="900" y2="180" />
-                <line x1="100" y1="360" x2="900" y2="360" />
-                <line x1="100" y1="540" x2="900" y2="540" />
-                <line x1="300" y1="80" x2="300" y2="720" />
-                <line x1="500" y1="80" x2="500" y2="720" />
-                <line x1="700" y1="80" x2="700" y2="720" />
-              </g>
-
-              <!-- 中國大陸東南沿海 (福建海岸線，真實比例呈現臺灣海峽) -->
-              <path class="fujian-coastline" d="
-                M 0 0 
-                L 260 0 
-                C 240 60, 230 130, 210 210 
-                C 195 280, 180 340, 170 410 
-                C 155 490, 140 570, 110 660 
-                C 80 730, 40 780, 0 800 Z
-              " />
-              <text x="50" y="380" class="continent-label">福建沿海</text>
-
-              <!-- 臺灣本島 (真實比例居中放置) -->
-              <!-- 經度約 120.0°E~122.0°E, 緯度約 21.9°N~25.3°N -->
-              <g class="taiwan-real-island" transform="translate(370, 130)">
-                <!-- 陸地主體 -->
-                <path class="gmap-land" d="
-                  M 195 35 
-                  C 215 50, 245 80, 255 110 
-                  C 265 140, 250 180, 235 220 
-                  C 220 265, 220 325, 205 390 
-                  C 190 455, 155 520, 118 570 
-                  C 105 590, 90 595, 82 590 
-                  C 72 580, 70 560, 68 520 
-                  C 58 460, 45 390, 38 320 
-                  C 30 250, 48 180, 75 120 
-                  C 105 55, 145 15, 195 35 Z
-                " />
-
-                <!-- 中央山脈與國家公園森林綠帶 -->
-                <path class="gmap-greenery" d="
-                  M 200 110
-                  C 215 150, 220 210, 210 270
-                  C 200 330, 190 390, 175 460
-                  C 160 520, 135 560, 105 580
-                  C 95 560, 100 510, 112 460
-                  C 130 390, 142 320, 148 250
-                  C 155 180, 175 120, 200 110 Z
-                " />
-
-                <!-- 國道1號 (中山高) 與主要公路貫穿線條 -->
-                <path class="gmap-highway hway-1" d="
-                  M 215 50 
-                  Q 185 85, 155 135 
-                  T 108 245 
-                  T 88 365 
-                  T 72 485 
-                  T 82 540
-                " />
-
-                <!-- 國道3號 (福高) -->
-                <path class="gmap-highway hway-3" d="
-                  M 235 65 
-                  Q 195 110, 168 160 
-                  T 120 265 
-                  T 102 380 
-                  T 90 495 
-                  T 98 555
-                " />
-
-                <!-- 臺9線東部公路 -->
-                <path class="gmap-highway hway-9" d="
-                  M 230 115 
-                  Q 220 210, 210 320 
-                  T 178 470 
-                  T 115 580
-                " />
-
-                <text x="130" y="320" class="taiwan-center-label">臺 灣</text>
-              </g>
-
-              <!-- 離島區域 (真實比例位置) -->
-              <!-- 澎湖群島 (西方外海) -->
-              <g class="island-penghu" transform="translate(240, 410)">
-                <circle cx="20" cy="30" r="14" class="gmap-land" />
-                <circle cx="5" cy="45" r="7" class="gmap-land" />
-                <circle cx="32" cy="25" r="6" class="gmap-land" />
-                <text x="5" y="65" class="island-label">澎湖</text>
-              </g>
-
-              <!-- 金門 (福建外海) -->
-              <g class="island-kinmen" transform="translate(130, 280)">
-                <path d="M 10 15 C 25 10, 40 22, 50 18 C 45 32, 20 33, 10 15 Z" class="gmap-land" />
-                <text x="12" y="45" class="island-label">金門</text>
-              </g>
-
-              <!-- 馬祖 (北方外海) -->
-              <g class="island-matsu" transform="translate(215, 80)">
-                <circle cx="15" cy="15" r="8" class="gmap-land" />
-                <circle cx="32" cy="22" r="9" class="gmap-land" />
-                <text x="10" y="42" class="island-label">馬祖</text>
-              </g>
-            </svg>
-
-            <!-- 測站 Google 水滴 Pin 標記圖層 (HTML Overlay) -->
-            <div class="pins-layer" id="pinsLayer">
-              <!-- 由 js/app.js 動態渲染 22 個水滴 Pin 標記 -->
-            </div>
-
-            <!-- Google InfoWindow 氣泡窗 -->
-            <div class="gmap-infowindow" id="googleInfoWindow" style="display: none;">
-              <div class="info-header">
-                <div>
-                  <span class="info-county" id="infoCounty">臺北市</span>
-                  <h4 class="info-title" id="infoTitle">臺北氣象站</h4>
-                </div>
-                <button class="info-close-btn" id="infoCloseBtn" title="關閉">&times;</button>
-              </div>
-              <div class="info-body">
-                <div class="info-temp-row">
-                  <span class="info-temp" id="infoTemp">26.8°C</span>
-                  <span class="info-weather" id="infoWeather">🌤️ 晴時多雲</span>
-                </div>
-                <div class="info-stats-grid">
-                  <div class="info-stat">
-                    <span>風向風速</span>
-                    <strong id="infoWind">東北風 3.2m/s</strong>
-                  </div>
-                  <div class="info-stat">
-                    <span>降雨量</span>
-                    <strong id="infoRain">0.0 mm</strong>
-                  </div>
-                  <div class="info-stat">
-                    <span>相對濕度</span>
-                    <strong id="infoHum">74%</strong>
-                  </div>
-                  <div class="info-stat">
-                    <span>大氣壓力</span>
-                    <strong id="infoPres">1011.2 hPa</strong>
-                  </div>
-                </div>
-              </div>
-              <div class="info-arrow"></div>
-            </div>
-
-          </div>
 
           <!-- 右下角 Google Maps 經典浮動縮放與復位控制器 -->
           <div class="gmap-controls">
@@ -256,7 +109,7 @@
               <svg width="14" height="14" viewBox="0 0 24 24" fill="#EA4335">
                 <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z"/>
               </svg>
-              <span>測站 Pin (點擊展開氣泡)</span>
+              <span>Leaflet 測站 Pin (點擊展開 Google 氣泡)</span>
             </div>
             <div class="gmap-legend-row">
               <span class="wind-flow-indicator">💨</span>

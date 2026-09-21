@@ -104,9 +104,11 @@ class WindyParticleEngine {
     this.currentDeg = this.interpolateAngle(this.currentDeg, this.targetDeg, 0.05);
     this.currentSpeed += (this.targetSpeed - this.currentSpeed) * 0.05;
 
-    // 半透明背景淡出以產生流暢尾跡 (Windy 流線殘影)
-    this.ctx.fillStyle = 'rgba(170, 218, 255, 0.18)';
+    // 半透明背景淡出以產生流暢尾跡 (Windy 流線殘影，同時保持底層 Leaflet 地圖清晰可見)
+    this.ctx.globalCompositeOperation = 'destination-out';
+    this.ctx.fillStyle = 'rgba(0, 0, 0, 0.12)';
     this.ctx.fillRect(0, 0, this.width, this.height);
+    this.ctx.globalCompositeOperation = 'source-over';
 
     this.ctx.lineCap = 'round';
 

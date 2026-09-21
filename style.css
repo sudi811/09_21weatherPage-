@@ -239,6 +239,27 @@ body {
   cursor: grabbing;
 }
 
+/* Leaflet 地圖容器 (100% 填滿 70% 視圖框) */
+.leaflet-map-stage {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 1;
+}
+
+/* 隱藏 Leaflet 預設左上角縮放按鈕（使用我們自訂的 Google Maps 風格浮動按鈕） */
+.leaflet-control-zoom {
+  display: none !important;
+}
+
+.leaflet-control-attribution {
+  font-size: 9px !important;
+  background: rgba(255, 255, 255, 0.7) !important;
+  padding: 0 4px !important;
+}
+
 /* 天氣疊層 (雷達回波 / 氣溫熱力 / 降雨雲系漸層) */
 .map-weather-overlay {
   position: absolute;
@@ -247,7 +268,7 @@ body {
   width: 100%;
   height: 100%;
   pointer-events: none;
-  z-index: 1;
+  z-index: 3;
   transition: opacity 0.5s ease;
 }
 
@@ -425,9 +446,17 @@ body {
   pointer-events: auto;
 }
 
+.leaflet-custom-marker {
+  background: transparent !important;
+  border: none !important;
+  overflow: visible !important;
+}
+
 .g-pin-node {
   position: absolute;
-  transform: translate(-50%, -100%);
+  left: 50%;
+  bottom: 0;
+  transform: translate(-50%, 0);
   cursor: pointer;
   z-index: 20;
   display: flex;
@@ -592,6 +621,43 @@ body {
   gap: 8px;
   padding-top: 8px;
   border-top: 1px solid var(--g-border-light);
+}
+
+/* Leaflet 自訂彈窗風格 (Google Maps InfoWindow 質感) */
+.leaflet-popup-content-wrapper {
+  background: var(--g-surface) !important;
+  border-radius: 14px !important;
+  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.28) !important;
+  padding: 0 !important;
+  overflow: hidden !important;
+  border: 1px solid var(--g-border-light) !important;
+}
+
+.leaflet-popup-content {
+  margin: 0 !important;
+  line-height: normal !important;
+  width: 250px !important;
+}
+
+.leaflet-popup-tip {
+  background: var(--g-surface) !important;
+  box-shadow: 0 3px 6px rgba(0, 0, 0, 0.2) !important;
+}
+
+.leaflet-popup-close-button {
+  top: 10px !important;
+  right: 10px !important;
+  color: var(--g-text-faint) !important;
+  font-size: 18px !important;
+  padding: 2px !important;
+}
+
+.leaflet-popup-close-button:hover {
+  color: var(--g-text-primary) !important;
+}
+
+.leaflet-custom-popup {
+  padding: 14px 16px;
 }
 
 .info-stat {

@@ -96,36 +96,36 @@ function getBeaufortScale(speedMs) {
  */
 const TAIWAN_STATIONS = [
   // 北部
-  { id: '466920', name: '臺北', county: '臺北市', region: 'north', mapX: 56, mapY: 22, temp: 26.8, windDeg: 65, windSpeed: 3.2, gust: 5.8, hum: 74, pres: 1011.2, rain: 0.0, weather: '晴時多雲', address: '臺北市中正區公園路64號' },
-  { id: '466940', name: '基隆', county: '基隆市', region: 'north', mapX: 62, mapY: 18, temp: 25.4, windDeg: 45, windSpeed: 4.8, gust: 7.5, hum: 82, pres: 1012.0, rain: 0.5, weather: '陰短暫雨', address: '基隆市仁愛區港西街' },
-  { id: '466880', name: '板橋', county: '新北市', region: 'north', mapX: 54, mapY: 23, temp: 26.5, windDeg: 70, windSpeed: 2.8, gust: 5.1, hum: 76, pres: 1011.0, rain: 0.0, weather: '多雲', address: '新北市板橋區大觀路' },
-  { id: 'C0C480', name: '桃園', county: '桃園市', region: 'north', mapX: 51, mapY: 24, temp: 26.2, windDeg: 55, windSpeed: 3.5, gust: 6.2, hum: 75, pres: 1011.5, rain: 0.0, weather: '晴時多雲', address: '桃園市桃園區縣府路' },
-  { id: '467571', name: '新竹', county: '新竹市', region: 'north', mapX: 46, mapY: 28, temp: 25.9, windDeg: 35, windSpeed: 5.2, gust: 8.4, hum: 78, pres: 1011.8, rain: 0.0, weather: '多雲時晴', address: '新竹市東區中正路' },
-  { id: 'C0D570', name: '竹北', county: '新竹縣', region: 'north', mapX: 48, mapY: 28, temp: 25.7, windDeg: 40, windSpeed: 4.6, gust: 7.9, hum: 77, pres: 1011.6, rain: 0.0, weather: '晴時多雲', address: '新竹縣竹北市光明六路' },
-  { id: 'C0E750', name: '苗栗', county: '苗栗縣', region: 'north', mapX: 44, mapY: 34, temp: 26.0, windDeg: 30, windSpeed: 3.8, gust: 6.5, hum: 73, pres: 1011.3, rain: 0.0, weather: '晴朗', address: '苗栗縣苗栗市縣府路' },
+  { id: '466920', name: '臺北', county: '臺北市', region: 'north', lat: 25.0375, lon: 121.5149, mapX: 56, mapY: 22, temp: 26.8, windDeg: 65, windSpeed: 3.2, gust: 5.8, hum: 74, pres: 1011.2, rain: 0.0, weather: '晴時多雲', address: '臺北市中正區公園路64號' },
+  { id: '466940', name: '基隆', county: '基隆市', region: 'north', lat: 25.1333, lon: 121.7405, mapX: 62, mapY: 18, temp: 25.4, windDeg: 45, windSpeed: 4.8, gust: 7.5, hum: 82, pres: 1012.0, rain: 0.5, weather: '陰短暫雨', address: '基隆市仁愛區港西街' },
+  { id: '466880', name: '板橋', county: '新北市', region: 'north', lat: 25.0007, lon: 121.4428, mapX: 54, mapY: 23, temp: 26.5, windDeg: 70, windSpeed: 2.8, gust: 5.1, hum: 76, pres: 1011.0, rain: 0.0, weather: '多雲', address: '新北市板橋區大觀路' },
+  { id: 'C0C480', name: '桃園', county: '桃園市', region: 'north', lat: 24.9936, lon: 121.3010, mapX: 51, mapY: 24, temp: 26.2, windDeg: 55, windSpeed: 3.5, gust: 6.2, hum: 75, pres: 1011.5, rain: 0.0, weather: '晴時多雲', address: '桃園市桃園區縣府路' },
+  { id: '467571', name: '新竹', county: '新竹市', region: 'north', lat: 24.8066, lon: 120.9688, mapX: 46, mapY: 28, temp: 25.9, windDeg: 35, windSpeed: 5.2, gust: 8.4, hum: 78, pres: 1011.8, rain: 0.0, weather: '多雲時晴', address: '新竹市東區中正路' },
+  { id: 'C0D570', name: '竹北', county: '新竹縣', region: 'north', lat: 24.8387, lon: 121.0089, mapX: 48, mapY: 28, temp: 25.7, windDeg: 40, windSpeed: 4.6, gust: 7.9, hum: 77, pres: 1011.6, rain: 0.0, weather: '晴時多雲', address: '新竹縣竹北市光明六路' },
+  { id: 'C0E750', name: '苗栗', county: '苗栗縣', region: 'north', lat: 24.5650, lon: 120.8208, mapX: 44, mapY: 34, temp: 26.0, windDeg: 30, windSpeed: 3.8, gust: 6.5, hum: 73, pres: 1011.3, rain: 0.0, weather: '晴朗', address: '苗栗縣苗栗市縣府路' },
 
   // 中部
-  { id: '467490', name: '臺中', county: '臺中市', region: 'central', mapX: 43, mapY: 42, temp: 27.5, windDeg: 340, windSpeed: 2.4, gust: 4.5, hum: 68, pres: 1010.5, rain: 0.0, weather: '晴朗', address: '臺中市西區精武路' },
-  { id: 'C0G650', name: '彰化', county: '彰化縣', region: 'central', mapX: 40, mapY: 44, temp: 27.2, windDeg: 350, windSpeed: 3.0, gust: 5.2, hum: 70, pres: 1010.7, rain: 0.0, weather: '晴朗', address: '彰化縣彰化市中山路' },
-  { id: '467650', name: '日月潭', county: '南投縣', region: 'central', mapX: 49, mapY: 48, temp: 22.8, windDeg: 120, windSpeed: 1.5, gust: 3.0, hum: 85, pres: 902.5, rain: 0.0, weather: '多雲', address: '南投縣魚池鄉中山路' },
-  { id: 'C0K400', name: '斗六', county: '雲林縣', region: 'central', mapX: 41, mapY: 52, temp: 27.8, windDeg: 10, windSpeed: 2.2, gust: 4.1, hum: 72, pres: 1010.2, rain: 0.0, weather: '晴時多雲', address: '雲林縣斗六市雲林路' },
-  { id: '467480', name: '嘉義', county: '嘉義市', region: 'central', mapX: 40, mapY: 57, temp: 28.0, windDeg: 330, windSpeed: 2.1, gust: 3.8, hum: 71, pres: 1010.0, rain: 0.0, weather: '晴朗', address: '嘉義市西區海埔新村' },
-  { id: 'C0M790', name: '太保', county: '嘉義縣', region: 'central', mapX: 37, mapY: 56, temp: 28.2, windDeg: 325, windSpeed: 2.5, gust: 4.2, hum: 69, pres: 1009.8, rain: 0.0, weather: '晴朗', address: '嘉義縣太保市祥和一路' },
+  { id: '467490', name: '臺中', county: '臺中市', region: 'central', lat: 24.1458, lon: 120.6842, mapX: 43, mapY: 42, temp: 27.5, windDeg: 340, windSpeed: 2.4, gust: 4.5, hum: 68, pres: 1010.5, rain: 0.0, weather: '晴朗', address: '臺中市西區精武路' },
+  { id: 'C0G650', name: '彰化', county: '彰化縣', region: 'central', lat: 24.0815, lon: 120.5385, mapX: 40, mapY: 44, temp: 27.2, windDeg: 350, windSpeed: 3.0, gust: 5.2, hum: 70, pres: 1010.7, rain: 0.0, weather: '晴朗', address: '彰化縣彰化市中山路' },
+  { id: '467650', name: '日月潭', county: '南投縣', region: 'central', lat: 23.8814, lon: 120.9081, mapX: 49, mapY: 48, temp: 22.8, windDeg: 120, windSpeed: 1.5, gust: 3.0, hum: 85, pres: 902.5, rain: 0.0, weather: '多雲', address: '南投縣魚池鄉中山路' },
+  { id: 'C0K400', name: '斗六', county: '雲林縣', region: 'central', lat: 23.7092, lon: 120.5435, mapX: 41, mapY: 52, temp: 27.8, windDeg: 10, windSpeed: 2.2, gust: 4.1, hum: 72, pres: 1010.2, rain: 0.0, weather: '晴時多雲', address: '雲林縣斗六市雲林路' },
+  { id: '467480', name: '嘉義', county: '嘉義市', region: 'central', lat: 23.4960, lon: 120.4332, mapX: 40, mapY: 57, temp: 28.0, windDeg: 330, windSpeed: 2.1, gust: 3.8, hum: 71, pres: 1010.0, rain: 0.0, weather: '晴朗', address: '嘉義市西區海埔新村' },
+  { id: 'C0M790', name: '太保', county: '嘉義縣', region: 'central', lat: 23.4594, lon: 120.3323, mapX: 37, mapY: 56, temp: 28.2, windDeg: 325, windSpeed: 2.5, gust: 4.2, hum: 69, pres: 1009.8, rain: 0.0, weather: '晴朗', address: '嘉義縣太保市祥和一路' },
 
   // 南部
-  { id: '467410', name: '臺南', county: '臺南市', region: 'south', mapX: 37, mapY: 67, temp: 28.5, windDeg: 290, windSpeed: 2.6, gust: 4.8, hum: 75, pres: 1009.6, rain: 0.0, weather: '晴朗', address: '臺南市中西區公園路' },
-  { id: '467440', name: '高雄', county: '高雄市', region: 'south', mapX: 39, mapY: 76, temp: 28.9, windDeg: 275, windSpeed: 3.1, gust: 5.5, hum: 73, pres: 1009.4, rain: 0.0, weather: '晴朗', address: '高雄市前鎮區新衙路' },
-  { id: '467590', name: '恆春', county: '屏東縣', region: 'south', mapX: 47, mapY: 88, temp: 28.1, windDeg: 80, windSpeed: 6.4, gust: 10.2, hum: 78, pres: 1008.9, rain: 0.0, weather: '多雲時晴', address: '屏東縣恆春鎮天文路' },
+  { id: '467410', name: '臺南', county: '臺南市', region: 'south', lat: 22.9932, lon: 120.2036, mapX: 37, mapY: 67, temp: 28.5, windDeg: 290, windSpeed: 2.6, gust: 4.8, hum: 75, pres: 1009.6, rain: 0.0, weather: '晴朗', address: '臺南市中西區公園路' },
+  { id: '467440', name: '高雄', county: '高雄市', region: 'south', lat: 22.5660, lon: 120.3157, mapX: 39, mapY: 76, temp: 28.9, windDeg: 275, windSpeed: 3.1, gust: 5.5, hum: 73, pres: 1009.4, rain: 0.0, weather: '晴朗', address: '高雄市前鎮區新衙路' },
+  { id: '467590', name: '恆春', county: '屏東縣', region: 'south', lat: 22.0039, lon: 120.7463, mapX: 47, mapY: 88, temp: 28.1, windDeg: 80, windSpeed: 6.4, gust: 10.2, hum: 78, pres: 1008.9, rain: 0.0, weather: '多雲時晴', address: '屏東縣恆春鎮天文路' },
 
   // 東部
-  { id: '467080', name: '宜蘭', county: '宜蘭縣', region: 'east', mapX: 61, mapY: 29, temp: 25.8, windDeg: 50, windSpeed: 3.6, gust: 6.0, hum: 80, pres: 1011.8, rain: 0.0, weather: '陰天', address: '宜蘭縣宜蘭市舊城東路' },
-  { id: '466990', name: '花蓮', county: '花蓮縣', region: 'east', mapX: 58, mapY: 46, temp: 26.9, windDeg: 42, windSpeed: 3.0, gust: 5.3, hum: 76, pres: 1010.5, rain: 0.0, weather: '多雲', address: '花蓮縣花蓮市北濱街' },
-  { id: '467660', name: '臺東', county: '臺東縣', region: 'east', mapX: 54, mapY: 72, temp: 27.4, windDeg: 60, windSpeed: 4.0, gust: 6.8, hum: 74, pres: 1009.8, rain: 0.0, weather: '晴時多雲', address: '臺東縣臺東市大同路' },
+  { id: '467080', name: '宜蘭', county: '宜蘭縣', region: 'east', lat: 24.7640, lon: 121.7565, mapX: 61, mapY: 29, temp: 25.8, windDeg: 50, windSpeed: 3.6, gust: 6.0, hum: 80, pres: 1011.8, rain: 0.0, weather: '陰天', address: '宜蘭縣宜蘭市舊城東路' },
+  { id: '466990', name: '花蓮', county: '花蓮縣', region: 'east', lat: 23.9751, lon: 121.6133, mapX: 58, mapY: 46, temp: 26.9, windDeg: 42, windSpeed: 3.0, gust: 5.3, hum: 76, pres: 1010.5, rain: 0.0, weather: '多雲', address: '花蓮縣花蓮市北濱街' },
+  { id: '467660', name: '臺東', county: '臺東縣', region: 'east', lat: 22.7522, lon: 121.1546, mapX: 54, mapY: 72, temp: 27.4, windDeg: 60, windSpeed: 4.0, gust: 6.8, hum: 74, pres: 1009.8, rain: 0.0, weather: '晴時多雲', address: '臺東縣臺東市大同路' },
 
   // 離島
-  { id: '467350', name: '澎湖', county: '澎湖縣', region: 'islands', mapX: 26, mapY: 55, temp: 27.0, windDeg: 35, windSpeed: 7.2, gust: 11.5, hum: 79, pres: 1011.0, rain: 0.0, weather: '晴時多雲', address: '澎湖縣馬公市新營路' },
-  { id: '467110', name: '金門', county: '金門縣', region: 'islands', mapX: 15, mapY: 38, temp: 26.6, windDeg: 45, windSpeed: 5.8, gust: 9.0, hum: 75, pres: 1012.1, rain: 0.0, weather: '晴朗', address: '金門縣金城鎮民權路' },
-  { id: '467990', name: '馬祖', county: '連江縣', region: 'islands', mapX: 24, mapY: 12, temp: 24.8, windDeg: 50, windSpeed: 6.5, gust: 10.8, hum: 81, pres: 1013.2, rain: 0.0, weather: '多雲', address: '連江縣南竿鄉介壽村' }
+  { id: '467350', name: '澎湖', county: '澎湖縣', region: 'islands', lat: 23.5657, lon: 119.5630, mapX: 26, mapY: 55, temp: 27.0, windDeg: 35, windSpeed: 7.2, gust: 11.5, hum: 79, pres: 1011.0, rain: 0.0, weather: '晴時多雲', address: '澎湖縣馬公市新營路' },
+  { id: '467110', name: '金門', county: '金門縣', region: 'islands', lat: 24.4073, lon: 118.2893, mapX: 15, mapY: 38, temp: 26.6, windDeg: 45, windSpeed: 5.8, gust: 9.0, hum: 75, pres: 1012.1, rain: 0.0, weather: '晴朗', address: '金門縣金城鎮民權路' },
+  { id: '467990', name: '馬祖', county: '連江縣', region: 'islands', lat: 26.1690, lon: 119.9234, mapX: 24, mapY: 12, temp: 24.8, windDeg: 50, windSpeed: 6.5, gust: 10.8, hum: 81, pres: 1013.2, rain: 0.0, weather: '多雲', address: '連江縣南竿鄉介壽村' }
 ];
 
 class WeatherService {
