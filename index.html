@@ -3,448 +3,395 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="description" content="臺灣即時氣象地圖 — Google Maps 風格沉浸式氣象儀表盤，整合中央氣象署即時觀測，具備動態風場、水滴 Pin 標記與多維度圖層切換。">
-  <title>臺灣即時氣候地圖 | Google Maps Style Weather</title>
+  <meta name="description" content="Windy.com 風格真實比例即時氣候雷達與動態風場地圖，提供全臺灣與東亞海域真實氣象、風速、溫度、降雨與衛星雲圖。">
+  <title>Windy.com - 氣象雷達與動態風場</title>
   <link rel="stylesheet" href="style.css">
-  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📍</text></svg>">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='50' cy='50' r='50' fill='%23c93f41'/><text x='50%' y='68%' font-size='50' font-weight='bold' fill='white' text-anchor='middle'>W</text></svg>">
 </head>
-<body>
+<body class="windy-body">
 
-  <!-- 底層動態風場氣流 Canvas -->
-  <canvas id="windCanvas"></canvas>
+  <!-- 全螢幕真實比例風場地圖視圖容器 -->
+  <div class="windy-viewport" id="windyViewport">
 
-  <div class="gmap-app-container">
+    <!-- 底層動態彩色氣象熱力圖層 (動態切換：風速/雷達/溫度/降雨) -->
+    <div class="windy-thermal-overlay" id="thermalOverlay"></div>
 
-    <!-- 頂部 Google Maps 經典浮動搜尋列 -->
-    <header class="gmap-top-bar">
-      <div class="search-box-card">
-        <div class="search-menu-btn" title="選單">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#5F6368" stroke-width="2.2">
-            <line x1="3" y1="12" x2="21" y2="12"/>
-            <line x1="3" y1="6" x2="21" y2="6"/>
-            <line x1="3" y1="18" x2="21" y2="18"/>
-          </svg>
-        </div>
+    <!-- 真實比例東亞與臺灣向量地圖舞台 (支援平移與縮放) -->
+    <div class="windy-map-stage" id="mapStage">
+      <svg class="windy-svg-map" viewBox="0 0 1600 1000" xmlns="http://www.w3.org/2000/svg">
+        <!-- 海洋背景 -->
+        <rect x="0" y="0" width="1600" height="1000" class="ocean-base" />
 
-        <div class="g-pin-logo" title="Google Maps 氣象風格">
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="#EA4335">
-            <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/>
-          </svg>
-        </div>
+        <!-- 經緯度參考網格與等壓線 -->
+        <g class="pressure-isobars" id="isobarGroup">
+          <circle cx="1200" cy="250" r="180" class="isobar-line" />
+          <circle cx="1200" cy="250" r="130" class="isobar-line" />
+          <circle cx="1200" cy="250" r="80" class="isobar-line" />
+          <circle cx="1200" cy="250" r="30" class="isobar-center" />
+          <text x="1200" y="255" class="isobar-label">965 hPa 🌀 氣旋中心</text>
 
-        <input type="text" class="gmap-search-input" id="gmapSearchInput" placeholder="搜尋全臺縣市或測站（例如：臺中、高雄、澎湖）..." aria-label="搜尋測站">
+          <ellipse cx="600" cy="400" rx="360" ry="240" class="isobar-line" />
+          <ellipse cx="600" cy="400" rx="260" ry="160" class="isobar-line" />
+          <text x="480" y="320" class="isobar-label">1012 hPa</text>
+        </g>
 
-        <button class="search-action-btn" id="btnSearchSubmit" title="搜尋">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#5F6368" stroke-width="2.2">
-            <circle cx="11" cy="11" r="8"/>
-            <line x1="21" y1="21" x2="16.65" y2="16.65"/>
-          </svg>
-        </button>
+        <!-- 中國東南沿海 (福建、浙江、廣東) -->
+        <path class="continent-land" d="
+          M 0 0 
+          L 550 0 
+          C 530 80, 520 160, 500 240 
+          C 480 320, 460 370, 450 420 
+          C 435 480, 410 540, 390 600 
+          C 360 670, 310 730, 260 800 
+          C 200 870, 100 930, 0 1000 Z
+        " />
 
-        <div class="search-divider"></div>
+        <!-- 臺灣本島 (居中真實經緯度比例) -->
+        <!-- 經度約 120°E~122°E, 緯度約 21.8°N~25.3°N -->
+        <g class="taiwan-archipelago" transform="translate(620, 380)">
+          <!-- 臺灣本島 -->
+          <path class="taiwan-mainland" d="
+            M 120 0 
+            C 140 15, 170 45, 178 70 
+            C 185 95, 172 130, 160 160 
+            C 148 195, 148 240, 138 290 
+            C 126 340, 100 390, 72 430 
+            C 62 445, 50 450, 44 445 
+            C 36 440, 34 425, 32 395 
+            C 24 350, 15 300, 10 250 
+            C 4 200, 18 150, 38 100 
+            C 58 50, 85 20, 120 0 Z
+          " />
+          <text x="65" y="220" class="map-place-name">臺灣</text>
 
-        <button class="search-action-btn refresh-btn" id="btnRefresh" title="重新擷取中央氣象署最新數據">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#1A73E8" stroke-width="2.2" stroke-linecap="round">
-            <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/>
-          </svg>
-        </button>
+          <!-- 澎湖群島 -->
+          <g class="penghu-islands" transform="translate(-45, 160)">
+            <circle cx="10" cy="15" r="9" class="island-shape" />
+            <circle cx="0" cy="25" r="5" class="island-shape" />
+            <circle cx="20" cy="12" r="4" class="island-shape" />
+            <text x="0" y="42" class="sub-place-name">澎湖</text>
+          </g>
+        </g>
+
+        <!-- 琉球群島 (沖繩至與那國島) -->
+        <g class="ryukyu-islands" transform="translate(800, 340)">
+          <path d="M 0 60 Q 50 40, 110 0" stroke="#7e9e78" stroke-width="4" fill="none" stroke-dasharray="8,15" />
+          <circle cx="15" cy="50" r="5" class="island-shape" />
+          <circle cx="45" cy="35" r="6" class="island-shape" />
+          <circle cx="85" cy="18" r="8" class="island-shape" />
+          <circle cx="130" cy="-5" r="10" class="island-shape" />
+          <text x="95" y="0" class="sub-place-name">沖繩</text>
+        </g>
+
+        <!-- 日本本州與九州 (東北方海域) -->
+        <path class="continent-land" d="
+          M 980 0 
+          C 1000 50, 1050 100, 1100 130 
+          C 1140 150, 1200 140, 1260 110 
+          C 1320 80, 1400 40, 1600 0 Z
+        " />
+        <text x="1100" y="80" class="map-place-name">日本</text>
+
+        <!-- 菲律賓群島 (南方海域) -->
+        <g class="philippines-islands" transform="translate(580, 750)">
+          <path class="island-shape" d="M 30 0 C 60 20, 70 80, 50 140 C 30 200, 60 230, 80 250 L 0 250 Z" />
+          <circle cx="80" cy="60" r="14" class="island-shape" />
+          <circle cx="110" cy="120" r="18" class="island-shape" />
+          <text x="50" y="100" class="map-place-name">菲律賓</text>
+        </g>
+      </svg>
+
+      <!-- 全臺灣 22 縣市測站標記圖層 (帶有即時數值膠囊) -->
+      <div class="windy-stations-layer" id="stationsLayer">
+        <!-- 由 js/app.js 動態渲染 -->
       </div>
 
-      <!-- 狀態徽章 -->
-      <div class="gmap-status-pill">
-        <span class="live-dot" id="liveDot"></span>
-        <span id="liveStatusText">即時連線 (CWA)</span>
-        <span class="pill-divider">•</span>
-        <span id="lastUpdatedText">更新: --:--</span>
+      <!-- 點擊地圖任意處彈出的 Windy 預報氣候選擇卡 (Weather Picker) -->
+      <div class="windy-picker-card" id="windyPickerCard" style="display: none;">
+        <div class="picker-header">
+          <div class="picker-place-title" id="pickerPlace">臺北市</div>
+          <button class="picker-close-btn" id="pickerCloseBtn">&times;</button>
+        </div>
+        <div class="picker-main">
+          <div class="picker-temp" id="pickerTemp">26.8°C</div>
+          <div class="picker-weather" id="pickerWeather">🌤️ 晴時多雲</div>
+        </div>
+        <div class="picker-details">
+          <div class="picker-row">
+            <span>💨 風向風速</span>
+            <strong id="pickerWind">東北風 3.2 m/s (6.2 kt)</strong>
+          </div>
+          <div class="picker-row">
+            <span>🌧️ 降雨量</span>
+            <strong id="pickerRain">0.0 mm</strong>
+          </div>
+          <div class="picker-row">
+            <span>💧 相對濕度</span>
+            <strong id="pickerHum">74%</strong>
+          </div>
+          <div class="picker-row">
+            <span>🧭 大氣壓力</span>
+            <strong id="pickerPres">1011.2 hPa</strong>
+          </div>
+        </div>
+        <div class="picker-arrow"></div>
+      </div>
+
+    </div>
+
+    <!-- 全螢幕動態風場氣流粒子 Canvas -->
+    <canvas id="windCanvas"></canvas>
+
+    <!-- ====================================================================
+         頂部品牌導航列 (Top Bar)
+         ==================================================================== -->
+    <header class="windy-top-bar">
+      <div class="top-left-group">
+        <button class="top-icon-btn" title="分享與匯出">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+            <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/>
+            <polyline points="16 6 12 2 8 6"/>
+            <line x1="12" y1="2" x2="12" y2="15"/>
+          </svg>
+        </button>
+
+        <!-- Windy 標誌 -->
+        <div class="windy-brand-logo">
+          <div class="logo-red-circle">
+            <span class="logo-w">W</span>
+          </div>
+          <span class="logo-text">Windy<span class="logo-dotcom">.com</span></span>
+          <span class="logo-tag">南盟</span>
+        </div>
+
+        <!-- 搜尋列 -->
+        <div class="windy-search-wrap">
+          <input type="text" class="windy-search-input" id="windySearchInput" placeholder="搜尋全臺縣市或地點...">
+          <button class="search-btn" id="btnSearch">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+              <circle cx="11" cy="11" r="8"/>
+              <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+            </svg>
+          </button>
+        </div>
+      </div>
+
+      <div class="top-right-group">
+        <button class="btn-premium">
+          <span>👑 使用高級版</span>
+        </button>
+        <button class="btn-login">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/>
+            <polyline points="10 17 15 12 10 7"/>
+            <line x1="15" y1="12" x2="3" y2="12"/>
+          </svg>
+          <span>登入</span>
+        </button>
       </div>
     </header>
 
-    <!-- 主體內容：中央居中 Google 地圖 + 右側側邊欄資訊卡 -->
-    <main class="gmap-main-grid">
+    <!-- ====================================================================
+         右側經典圓形圖層選單 (Right Side Layer Menu - 截圖完全還原)
+         ==================================================================== -->
+    <aside class="windy-right-menu">
+      
+      <!-- 頂部紅色選單按鈕 -->
+      <button class="menu-main-btn" id="btnMainMenu" title="選單">
+        <span class="btn-text">選單</span>
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8">
+          <line x1="3" y1="12" x2="21" y2="12"/>
+          <line x1="3" y1="6" x2="21" y2="6"/>
+          <line x1="3" y1="18" x2="21" y2="18"/>
+        </svg>
+      </button>
 
-      <!-- ====================================================================
-           主視覺：居中 Google Maps 向量互動地圖
-           ==================================================================== -->
-      <section class="gmap-viewport-section">
-        <div class="gmap-frame" id="mapFrame">
-          
-          <!-- 頂部浮動圖層選擇膠囊 (Layer Chips) -->
-          <div class="floating-layer-chips" id="layerChips">
-            <button class="chip-item active" data-layer="temp">
-              <span class="chip-icon">🌡️</span>
-              <span>氣溫</span>
-            </button>
-            <button class="chip-item" data-layer="wind">
-              <span class="chip-icon">💨</span>
-              <span>風向風速</span>
-            </button>
-            <button class="chip-item" data-layer="rain">
-              <span class="chip-icon">🌧️</span>
-              <span>降雨量</span>
-            </button>
-            <button class="chip-item" data-layer="humidity">
-              <span class="chip-icon">💧</span>
-              <span>濕度氣壓</span>
-            </button>
+      <!-- 垂直圖層選項清單 -->
+      <nav class="layer-list" id="layerNav">
+        
+        <button class="layer-item" data-layer="radar" title="氣象雷達回波">
+          <span class="layer-name">氣象雷達</span>
+          <span class="layer-circle-icon icon-radar"></span>
+        </button>
+
+        <button class="layer-item" data-layer="satellite" title="真實可見光與紅外衛星雲圖">
+          <span class="layer-name">衛星</span>
+          <span class="layer-circle-icon icon-satellite"></span>
+        </button>
+
+        <button class="layer-item active" data-layer="wind" title="表面即時風速與風場氣流">
+          <span class="layer-name">風速</span>
+          <span class="layer-circle-icon icon-wind"></span>
+        </button>
+
+        <button class="layer-item" data-layer="rain" title="降雨強度與雷暴監測">
+          <span class="layer-name">降雨、雷暴</span>
+          <span class="layer-circle-icon icon-rain"></span>
+        </button>
+
+        <button class="layer-item" data-layer="temp" title="地表即時氣溫分佈">
+          <span class="layer-name">溫度</span>
+          <span class="layer-circle-icon icon-temp"></span>
+        </button>
+
+        <button class="layer-item" data-layer="hurricane" title="熱帶氣旋與颱風路徑追蹤">
+          <span class="layer-name">颱風追蹤器</span>
+          <span class="layer-circle-icon icon-hurricane"></span>
+        </button>
+
+        <button class="layer-item" data-layer="clouds" title="雲層總量與高低層雲">
+          <span class="layer-name">雲</span>
+          <span class="layer-circle-icon icon-clouds"></span>
+        </button>
+
+        <button class="layer-item" data-layer="waves" title="海洋湧浪與浪高預報">
+          <span class="layer-name">波浪</span>
+          <span class="layer-circle-icon icon-waves"></span>
+        </button>
+
+        <button class="layer-item" data-layer="accumRain" title="未來數日累積降雨量">
+          <span class="layer-name">累積雨量</span>
+          <span class="layer-circle-icon icon-accum-rain"></span>
+        </button>
+
+        <button class="layer-item" data-layer="rain" title="雷暴放電監測">
+          <span class="layer-name">雷暴</span>
+          <span class="layer-circle-icon icon-thunder"></span>
+        </button>
+
+        <button class="layer-item" data-layer="wind" title="高度氣流觀測">
+          <span class="layer-name">高度 ✈️</span>
+          <span class="layer-circle-icon icon-altitude"></span>
+        </button>
+
+      </nav>
+    </aside>
+
+    <!-- ====================================================================
+         右下角浮動控制按鈕 (Map Controls & Toggles)
+         ==================================================================== -->
+    <div class="windy-floating-controls">
+      
+      <!-- 氣壓與粒子動畫開關 -->
+      <div class="toggle-bar">
+        <label class="toggle-pill">
+          <input type="checkbox" id="togglePressure" checked>
+          <span class="toggle-indicator"></span>
+          <span class="toggle-label">氣壓</span>
+        </label>
+
+        <label class="toggle-pill">
+          <input type="checkbox" id="toggleParticles" checked>
+          <span class="toggle-indicator"></span>
+          <span class="toggle-label">粒子動畫</span>
+        </label>
+      </div>
+
+      <!-- 地圖縮放與視角按鈕 (完全對齊截圖) -->
+      <div class="btn-group-primary">
+        <button class="ctrl-btn" id="btnZoomIn" title="放大">+</button>
+        <button class="ctrl-btn" id="btnZoomOut" title="縮小">&minus;</button>
+        <button class="ctrl-btn text-btn" id="btn3D" title="3D 地球模式">3D</button>
+        <button class="ctrl-btn icon-btn" id="btnInfo" title="資訊">ⓘ</button>
+        <button class="ctrl-btn icon-btn" id="btnCyclone" title="氣旋追蹤">🌀</button>
+        <button class="ctrl-btn icon-btn" id="btnFullscreen" title="全螢幕">⛶</button>
+      </div>
+
+      <!-- 下方快捷圖示列 -->
+      <div class="btn-group-secondary">
+        <button class="sub-ctrl-btn" title="天氣預報">🌦️</button>
+        <button class="sub-ctrl-btn" title="機場與測站">🚩</button>
+        <button class="sub-ctrl-btn" title="航線風向">✈️</button>
+        <button class="sub-ctrl-btn" title="實況視訊">📹</button>
+        <button class="sub-ctrl-btn active-amber" id="btnResetView" title="重設至臺灣中心">✖</button>
+      </div>
+
+    </div>
+
+    <!-- ====================================================================
+         底部預報時間軸與數值色階 (Timeline Player & Legend Bar)
+         ==================================================================== -->
+    <footer class="windy-bottom-dock">
+      
+      <div class="timeline-container">
+        <!-- 播放/暫停按鈕 -->
+        <button class="timeline-play-btn" id="btnPlayTimeline" title="播放預報時間軸">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+            <polygon points="6 4 20 12 6 20 6 4"/>
+          </svg>
+        </button>
+
+        <!-- 時間軸日期項目 -->
+        <div class="timeline-track" id="timelineTrack">
+          <div class="timeline-day active" data-day="0">
+            <span class="day-label">四 24</span>
+            <span class="day-icon">☀️</span>
           </div>
-
-          <!-- 分區快篩膠囊 (Region Chips) -->
-          <div class="floating-region-chips" id="regionChips">
-            <button class="region-chip active" data-region="all">全臺灣</button>
-            <button class="region-chip" data-region="north">北部</button>
-            <button class="region-chip" data-region="central">中部</button>
-            <button class="region-chip" data-region="south">南部</button>
-            <button class="region-chip" data-region="east">東部</button>
-            <button class="region-chip" data-region="islands">離島</button>
+          <div class="timeline-day" data-day="1">
+            <span class="day-label">五 25</span>
+            <span class="day-icon">⛅</span>
           </div>
-
-          <!-- 可縮放平移的地圖舞台 -->
-          <div class="map-stage" id="mapStage">
-            
-            <!-- Google Maps 配色之臺灣底圖 SVG -->
-            <svg class="gmap-taiwan-svg" viewBox="0 0 500 700" xmlns="http://www.w3.org/2000/svg">
-              <!-- 海洋水域底色在容器 CSS 中定義為 #AADAFF -->
-
-              <!-- 臺灣本島陸地 (Google 淺暖灰 #F4F3F0) -->
-              <path class="gmap-land" d="
-                M 330 95 
-                C 345 105, 368 125, 375 145
-                C 382 165, 370 190, 362 215
-                C 355 240, 362 270, 358 310
-                C 354 350, 348 400, 335 460
-                C 322 520, 290 575, 255 615
-                C 245 628, 235 632, 230 630
-                C 222 626, 218 610, 215 585
-                C 205 540, 192 485, 185 435
-                C 178 385, 192 340, 210 290
-                C 228 240, 245 200, 268 160
-                C 285 130, 310 100, 330 95 Z
-              " />
-
-              <!-- 中央山脈與國家公園綠帶 (Google 森林綠 #CDE8CD) -->
-              <path class="gmap-greenery" d="
-                M 325 155
-                C 340 185, 345 240, 338 290
-                C 332 340, 325 390, 312 450
-                C 300 505, 280 545, 255 580
-                C 245 565, 250 520, 260 480
-                C 275 420, 285 360, 288 300
-                C 292 240, 305 180, 325 155 Z
-              " />
-
-              <!-- 經典主要公路幹道紋路 (白線與黃線) -->
-              <!-- 國道1號 (中山高) -->
-              <path class="gmap-highway hway-1" d="
-                M 345 110 
-                Q 310 140, 280 180 
-                T 235 270 
-                T 215 370 
-                T 200 470 
-                T 208 550 
-                T 210 590
-              " />
-
-              <!-- 國道3號 (福爾摩沙高速公路) -->
-              <path class="gmap-highway hway-3" d="
-                M 360 120 
-                Q 320 160, 290 200 
-                T 245 285 
-                T 230 380 
-                T 218 480 
-                T 225 570
-              " />
-
-              <!-- 臺9線東部幹線 -->
-              <path class="gmap-highway hway-9" d="
-                M 355 170 
-                Q 348 260, 340 350 
-                T 315 480 
-                T 250 610
-              " />
-
-              <!-- 離島區域 -->
-              <!-- 澎湖 -->
-              <g class="gmap-island-penghu">
-                <rect x="65" y="335" width="60" height="65" rx="8" class="island-card-box" />
-                <text x="72" y="349" class="island-title">澎湖群島</text>
-                <circle cx="95" cy="370" r="11" class="gmap-land-island" />
-                <circle cx="85" cy="380" r="6" class="gmap-land-island" />
-                <circle cx="108" cy="365" r="5" class="gmap-land-island" />
-              </g>
-
-              <!-- 金門 -->
-              <g class="gmap-island-kinmen">
-                <rect x="40" y="165" width="55" height="50" rx="8" class="island-card-box" />
-                <text x="47" y="179" class="island-title">金門縣</text>
-                <path d="M 52 195 C 65 190, 75 198, 85 194 C 82 205, 60 206, 52 195 Z" class="gmap-land-island" />
-              </g>
-
-              <!-- 馬祖 -->
-              <g class="gmap-island-matsu">
-                <rect x="55" y="45" width="55" height="50" rx="8" class="island-card-box" />
-                <text x="62" y="59" class="island-title">連江/馬祖</text>
-                <circle cx="78" cy="74" r="6" class="gmap-land-island" />
-                <circle cx="92" cy="80" r="7" class="gmap-land-island" />
-              </g>
-            </svg>
-
-            <!-- 測站 Google 水滴 Pin 標記圖層 (HTML Overlay) -->
-            <div class="pins-layer" id="pinsLayer">
-              <!-- 由 js/app.js 動態渲染 22 個水滴 Pin 標記 -->
-            </div>
-
-            <!-- Google InfoWindow 氣泡窗 -->
-            <div class="gmap-infowindow" id="googleInfoWindow" style="display: none;">
-              <div class="info-header">
-                <div>
-                  <span class="info-county" id="infoCounty">臺北市</span>
-                  <h4 class="info-title" id="infoTitle">臺北氣象站</h4>
-                </div>
-                <button class="info-close-btn" id="infoCloseBtn" title="關閉">&times;</button>
-              </div>
-              <div class="info-body">
-                <div class="info-temp-row">
-                  <span class="info-temp" id="infoTemp">26.8°C</span>
-                  <span class="info-weather" id="infoWeather">🌤️ 晴時多雲</span>
-                </div>
-                <div class="info-stats-grid">
-                  <div class="info-stat">
-                    <span>風向風速</span>
-                    <strong id="infoWind">東北風 3.2m/s</strong>
-                  </div>
-                  <div class="info-stat">
-                    <span>降雨機率/雨量</span>
-                    <strong id="infoRain">0.0 mm</strong>
-                  </div>
-                  <div class="info-stat">
-                    <span>相對濕度</span>
-                    <strong id="infoHum">74%</strong>
-                  </div>
-                  <div class="info-stat">
-                    <span>舒適度</span>
-                    <strong id="infoComfort">舒適微涼</strong>
-                  </div>
-                </div>
-              </div>
-              <div class="info-arrow"></div>
-            </div>
-
+          <div class="timeline-day" data-day="2">
+            <span class="day-label">六 26</span>
+            <span class="day-icon">🌧️</span>
           </div>
-
-          <!-- 右下角 Google Maps 經典浮動控制器 -->
-          <div class="gmap-controls">
-            <button class="gmap-ctrl-btn" id="btnZoomIn" title="放大">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#5F6368" stroke-width="2.5">
-                <line x1="12" y1="5" x2="12" y2="19"/>
-                <line x1="5" y1="12" x2="19" y2="12"/>
-              </svg>
-            </button>
-            <div class="ctrl-divider"></div>
-            <button class="gmap-ctrl-btn" id="btnZoomOut" title="縮小">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#5F6368" stroke-width="2.5">
-                <line x1="5" y1="12" x2="19" y2="12"/>
-              </svg>
-            </button>
-            <button class="gmap-ctrl-btn" id="btnRecenter" title="回到全島中心" style="margin-top: 8px;">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#1A73E8" stroke-width="2.2">
-                <circle cx="12" cy="12" r="8"/>
-                <line x1="12" y1="2" x2="12" y2="5"/>
-                <line x1="12" y1="19" x2="12" y2="22"/>
-                <line x1="2" y1="12" x2="5" y2="12"/>
-                <line x1="19" y1="12" x2="22" y2="12"/>
-                <circle cx="12" cy="12" r="3" fill="#1A73E8"/>
-              </svg>
-            </button>
+          <div class="timeline-day" data-day="3">
+            <span class="day-label">日 27</span>
+            <span class="day-icon">🌤️</span>
           </div>
-
-          <!-- 左下角圖例提示 -->
-          <div class="gmap-legend-box">
-            <div class="gmap-legend-row">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="#EA4335">
-                <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z"/>
-              </svg>
-              <span>觀測站 Pin (點擊展開)</span>
-            </div>
-            <div class="gmap-legend-row">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#1A73E8" stroke-width="2.5">
-                <line x1="12" y1="19" x2="12" y2="5"/>
-                <polyline points="5 12 12 5 19 12"/>
-              </svg>
-              <span>即時風向箭頭</span>
-            </div>
+          <div class="timeline-day" data-day="4">
+            <span class="day-label">一 28</span>
+            <span class="day-icon">☀️</span>
           </div>
-
+          <div class="timeline-day" data-day="5">
+            <span class="day-label">二 29</span>
+            <span class="day-icon">⛅</span>
+          </div>
+          <div class="timeline-day" data-day="6">
+            <span class="day-label">三 30</span>
+            <span class="day-icon">☀️</span>
+          </div>
+          <div class="timeline-day" data-day="7">
+            <span class="day-label">四 1</span>
+            <span class="day-icon">🌦️</span>
+          </div>
+          <div class="timeline-day" data-day="8">
+            <span class="day-label">五 2</span>
+            <span class="day-icon">🌧️</span>
+          </div>
+          <div class="timeline-day" data-day="9">
+            <span class="day-label">六 3</span>
+            <span class="day-icon">⛅</span>
+          </div>
         </div>
-      </section>
+      </div>
 
-      <!-- ====================================================================
-           右側：Google Place Sheet 測站詳細面板 (Place Details Panel)
-           ==================================================================== -->
-      <aside class="gmap-sidebar">
+      <!-- 右側：預報模型切換與彩色數值標尺 -->
+      <div class="legend-and-models">
+        
+        <!-- 氣象模型切換按鈕群 -->
+        <div class="model-picker-bar">
+          <button class="model-btn active" data-model="ecmwf">ECMWF <span>9km</span></button>
+          <button class="model-btn" data-model="gfs">GFS <span>22km</span></button>
+          <button class="model-btn" data-model="icon">ICON <span>13km</span></button>
+          <button class="model-btn more-btn">2 更多...</button>
+        </div>
 
-        <!-- 1. Google 測站地標主卡片 (Place Card) -->
-        <div class="place-sheet-card">
-          <div class="place-banner">
-            <div class="banner-badge">交通部中央氣象署 • 即時觀測</div>
-            <div class="weather-icon-large" id="sidebarWeatherIcon">🌤️</div>
-          </div>
-
-          <div class="place-header">
-            <div class="place-title-wrap">
-              <h2 class="place-title" id="sidebarStationName">臺北氣象站</h2>
-              <span class="place-county" id="sidebarCountyName">臺北市中正區</span>
-            </div>
-
-            <!-- Google 星級評分風格標籤 -->
-            <div class="place-rating-row">
-              <span class="rating-num">4.9</span>
-              <span class="rating-stars">★★★★★</span>
-              <span class="rating-count">即時監測中 (每10分鐘更新)</span>
-            </div>
-          </div>
-
-          <!-- 主圖層巨幅氣象指標 -->
-          <div class="place-metric-display">
-            <div class="metric-number" id="sidebarMainVal">26.8</div>
-            <div class="metric-unit" id="sidebarMainUnit">°C</div>
-            <div class="metric-condition" id="sidebarWeatherText">晴時多雲</div>
-          </div>
-          <div class="metric-feels-like" id="sidebarSubText">體感溫度 27.5°C • 適合戶外活動</div>
-
-          <!-- Google 快捷操作按鈕列 -->
-          <div class="place-actions-row">
-            <button class="action-btn active" id="btnFocusCompass" title="查看風向">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="#1A73E8">
-                <polygon points="12 2 19 21 12 17 5 21 12 2"/>
-              </svg>
-              <span>風向羅盤</span>
-            </button>
-            <button class="action-btn" id="btnQuickRefresh" title="同步即時數據">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#1A73E8" stroke-width="2.2">
-                <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/>
-              </svg>
-              <span>即時同步</span>
-            </button>
-            <button class="action-btn" id="btnCopyData" title="複製目前測站數據">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#1A73E8" stroke-width="2.2">
-                <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
-                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
-              </svg>
-              <span>分享數據</span>
-            </button>
+        <!-- 彩色數值階層標尺 (隨當前圖層即時動態更新) -->
+        <div class="color-scale-bar" id="colorScaleBar">
+          <span class="scale-unit" id="scaleUnit">kt</span>
+          <div class="scale-blocks-wrap" id="scaleBlocksWrap">
+            <!-- 由 js/app.js 動態渲染色塊與刻度 -->
           </div>
         </div>
 
-        <!-- 2. Google 風格 360° 即時風向羅盤儀 -->
-        <div class="place-sheet-card compass-sheet-card">
-          <div class="card-heading">
-            <div class="card-title-group">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="#1A73E8">
-                <circle cx="12" cy="12" r="10"/>
-                <polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76" fill="#fff"/>
-              </svg>
-              <h3 class="card-title">動態風向與旋轉風速計</h3>
-            </div>
-            <span class="beaufort-tag" id="sidebarBeaufortBadge">3級 微風</span>
-          </div>
+      </div>
 
-          <div class="google-compass-box">
-            <div class="g-compass-dial">
-              <span class="g-mark g-n">N</span>
-              <span class="g-mark g-e">E</span>
-              <span class="g-mark g-s">S</span>
-              <span class="g-mark g-w">W</span>
-              
-              <!-- 羅盤指針 (旋轉指向來風方位) -->
-              <div class="g-compass-needle" id="compassNeedle">
-                <div class="g-needle-arrow"></div>
-              </div>
-
-              <!-- 中心旋轉風杯 (轉速與即時風速連動) -->
-              <div class="g-anemometer-center" id="anemometerRotor" title="風杯轉速隨即時風速連動">
-                <div class="rotor-arm rotor-1"></div>
-                <div class="rotor-arm rotor-2"></div>
-                <div class="rotor-arm rotor-3"></div>
-                <div class="rotor-dot"></div>
-              </div>
-            </div>
-
-            <div class="compass-data-row">
-              <div class="c-data-cell">
-                <span class="cell-label">風向角</span>
-                <strong class="cell-val" id="sidebarWindDir">東北風 (65°)</strong>
-              </div>
-              <div class="c-data-divider"></div>
-              <div class="c-data-cell">
-                <span class="cell-label">即時風速</span>
-                <strong class="cell-val" id="sidebarWindSpeed">3.2 m/s</strong>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- 3. 詳細環境指標 (Google 地標資訊項目) -->
-        <div class="place-sheet-card details-sheet-card">
-          <div class="card-heading">
-            <h3 class="card-title">測站詳細觀測項目</h3>
-            <span class="cwa-tag">CWA O-A0001-001</span>
-          </div>
-
-          <div class="g-info-list">
-            <div class="g-info-row">
-              <div class="g-info-icon">📍</div>
-              <div class="g-info-text">
-                <div class="g-info-label">測站座標與地址</div>
-                <div class="g-info-val" id="sidebarAddress">25.04°N, 121.51°E • 臺北市中正區公園路64號</div>
-              </div>
-            </div>
-
-            <div class="g-info-row">
-              <div class="g-info-icon">💨</div>
-              <div class="g-info-text">
-                <div class="g-info-label">平均風速 / 最大陣風</div>
-                <div class="g-info-val" id="sidebarGustSpeed">3.2 m/s (11.5 km/h) • 瞬間陣風 5.8 m/s</div>
-              </div>
-            </div>
-
-            <div class="g-info-row">
-              <div class="g-info-icon">💧</div>
-              <div class="g-info-text">
-                <div class="g-info-label">相對濕度</div>
-                <div class="g-info-val" id="sidebarHumidity">74% (舒適潤澤)</div>
-              </div>
-            </div>
-
-            <div class="g-info-row">
-              <div class="g-info-icon">⏱️</div>
-              <div class="g-info-text">
-                <div class="g-info-label">大氣壓力</div>
-                <div class="g-info-val" id="sidebarPressure">1011.2 hPa (海平面標準氣壓)</div>
-              </div>
-            </div>
-
-            <div class="g-info-row">
-              <div class="g-info-icon">🌧️</div>
-              <div class="g-info-text">
-                <div class="g-info-label">本日累積降雨</div>
-                <div class="g-info-val" id="sidebarRain">0.0 mm (目前尚無降雨)</div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-      </aside>
-
-    </main>
-
-    <!-- 頁尾 -->
-    <footer class="gmap-footer">
-      <p>資料來源：交通部中央氣象署（CWA）開放資料平臺 • Google Maps 互動風格臺灣氣候地圖</p>
     </footer>
 
   </div>
 
-  <!-- 應用程式邏輯腳本 -->
+  <!-- 應用邏輯腳本 -->
   <script src="js/weather-data.js"></script>
   <script src="js/wind-canvas.js"></script>
   <script src="js/app.js"></script>
