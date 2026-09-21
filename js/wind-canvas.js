@@ -1,7 +1,7 @@
 /**
  * Windy Style Wind Particle Streamline Engine
- * High-performance full-viewport Canvas 2D rendering particle streamlines
- * supporting map panning, zooming, and layer velocity fields.
+ * Renders smooth flowing airflow streamlines over the 70% map viewport.
+ * Dynamically reacts to real-time wind speed, wind angle, zoom, and layer selection.
  */
 
 class WindyParticleEngine {
@@ -13,21 +13,19 @@ class WindyParticleEngine {
     }
     this.ctx = this.canvas.getContext('2d');
 
-    // 地圖變換狀態 (平移與縮放)
     this.zoom = 1.0;
     this.panX = 0;
     this.panY = 0;
 
-    // 全域風場風向與風速
-    this.globalDeg = 55;      // 東北風
-    this.globalSpeed = 4.2;   // 預設風速 (m/s)
-    this.targetDeg = 55;
-    this.targetSpeed = 4.2;
+    // 即時風向與風速
+    this.targetDeg = 65;      // 預設東北風
+    this.currentDeg = 65;
+    this.targetSpeed = 3.5;   // 預設風速 (m/s)
+    this.currentSpeed = 3.5;
 
     this.particles = [];
-    this.numParticles = 550;
+    this.numParticles = 380;
     this.isRunning = true;
-    this.particlesEnabled = true;
     this.dpr = Math.min(window.devicePixelRatio || 1, 2);
 
     this.initSize();
@@ -38,14 +36,16 @@ class WindyParticleEngine {
   }
 
   initSize() {
-    this.width = window.innerWidth;
-    this.height = window.innerHeight;
+    const parent = this.canvas.parentElement;
+    this.width = parent ? parent.clientWidth : window.innerWidth;
+    this.height = parent ? parent.clientHeight : window.innerHeight;
+
     this.canvas.width = this.width * this.dpr;
     this.canvas.height = this.height * this.dpr;
     this.ctx.scale(this.dpr, this.dpr);
 
     const area = this.width * this.height;
-    this.numParticles = Math.min(800, Math.max(300, Math.floor(area / 2400)));
+    this.numParticles = Math.min(600, Math.max(220, Math.floor(area / 2200)));
   }
 
   initParticles() {
@@ -56,7 +56,7 @@ class WindyParticleEngine {
   }
 
   createParticle(randomAge = false) {
-    const life = Math.floor(Math.random() * 80) + 40;
+    const life = Math.floor(Math.random() * 75) + 45;
     return {
       x: Math.random() * this.width,
       y: Math.random() * this.height,
@@ -64,27 +64,20 @@ class WindyParticleEngine {
       prevY: null,
       age: randomAge ? Math.floor(Math.random() * life) : 0,
       maxLife: life,
-      speedFactor: 0.85 + Math.random() * 0.4,
-      width: Math.random() < 0.2 ? 1.8 : 1.1
+      speedFactor: 0.85 + Math.random() * 0.45,
+      width: Math.random() < 0.25 ? 1.8 : 1.1
     };
   }
 
   setWind(deg, speed) {
     this.targetDeg = deg;
-    this.targetSpeed = Math.max(speed, 0.8);
+    this.targetSpeed = Math.max(speed, 0.6);
   }
 
   setTransform(panX, panY, zoom) {
     this.panX = panX;
     this.panY = panY;
     this.zoom = zoom;
-  }
-
-  setParticlesEnabled(enabled) {
-    this.particlesEnabled = enabled;
-    if (!enabled) {
-      this.ctx.clearRect(0, 0, this.width, this.height);
-    }
   }
 
   bindEvents() {
@@ -108,29 +101,18 @@ class WindyParticleEngine {
   animate() {
     if (!this.isRunning) return;
 
-    if (!this.particlesEnabled) {
-      this.ctx.clearRect(0, 0, this.width, this.height);
-      requestAnimationFrame(this.animate);
-      return;
-    }
+    this.currentDeg = this.interpolateAngle(this.currentDeg, this.targetDeg, 0.05);
+    this.currentSpeed += (this.targetSpeed - this.currentSpeed) * 0.05;
 
-    // 平滑插值風向與速度
-    this.globalDeg = this.interpolateAngle(this.globalDeg, this.targetDeg, 0.05);
-    this.globalSpeed += (this.targetSpeed - this.globalSpeed) * 0.05;
-
-    // 半透明背景重繪營造 Windy 經典白流線殘影
-    this.ctx.fillStyle = 'rgba(10, 18, 35, 0.22)';
+    // 半透明背景淡出以產生流暢尾跡 (Windy 流線殘影)
+    this.ctx.fillStyle = 'rgba(170, 218, 255, 0.18)';
     this.ctx.fillRect(0, 0, this.width, this.height);
 
     this.ctx.lineCap = 'round';
 
-    // 氣象前進方位向量
-    const baseRad = (this.globalDeg + 90) * (Math.PI / 180);
-    const baseSpeed = this.globalSpeed * 1.35 * Math.sqrt(this.zoom);
-
-    // 模擬氣旋旋渦中心 (模擬琉球/日本南方海域氣旋，如截圖所示)
-    const cycloneX = this.width * 0.75 + this.panX * 0.5;
-    const cycloneY = this.height * 0.25 + this.panY * 0.5;
+    const moveAngleRad = (this.currentDeg + 90) * (Math.PI / 180);
+    const vx = Math.cos(moveAngleRad) * this.currentSpeed * 1.35 * Math.sqrt(this.zoom);
+    const vy = Math.sin(moveAngleRad) * this.currentSpeed * 1.35 * Math.sqrt(this.zoom);
 
     for (let i = 0; i < this.particles.length; i++) {
       const p = this.particles[i];
@@ -140,38 +122,20 @@ class WindyParticleEngine {
         p.prevY = p.y;
       }
 
-      // 計算與氣旋中心的距離與切向引力
-      const dx = p.x - cycloneX;
-      const dy = p.y - cycloneY;
-      const dist = Math.sqrt(dx * dx + dy * dy);
-
-      let vx = Math.cos(baseRad) * baseSpeed;
-      let vy = Math.sin(baseRad) * baseSpeed;
-
-      // 如果靠近氣旋中心，疊加逆時針旋轉氣流 (Northern Hemisphere Cyclone)
-      if (dist < 450) {
-        const swirlStrength = (1 - dist / 450) * 1.8;
-        const angle = Math.atan2(dy, dx) - Math.PI / 2; // 逆時針切線
-        vx = vx * (1 - swirlStrength * 0.5) + Math.cos(angle) * (baseSpeed * 2.2) * swirlStrength;
-        vy = vy * (1 - swirlStrength * 0.5) + Math.sin(angle) * (baseSpeed * 2.2) * swirlStrength;
-      }
-
-      // 微氣流擾動
-      const turbulence = Math.sin(p.age * 0.08) * 0.6;
+      const turbulence = Math.sin(p.age * 0.08) * 0.55;
       p.x += (vx + turbulence) * p.speedFactor;
       p.y += (vy - turbulence) * p.speedFactor;
 
-      // 透明度漸層
       const lifeRatio = p.age / p.maxLife;
       let alpha = 1.0;
       if (lifeRatio < 0.2) {
         alpha = lifeRatio / 0.2;
-      } else if (lifeRatio > 0.75) {
-        alpha = (1 - lifeRatio) / 0.25;
+      } else if (lifeRatio > 0.8) {
+        alpha = (1 - lifeRatio) / 0.2;
       }
-      alpha = Math.max(0, Math.min(0.9, alpha * 0.85));
+      alpha = Math.max(0, Math.min(0.95, alpha * 0.9));
 
-      // 繪製白色氣流線
+      // 繪製白色氣流流線 (Windy 經典風條)
       this.ctx.beginPath();
       this.ctx.strokeStyle = '#FFFFFF';
       this.ctx.globalAlpha = alpha;
@@ -184,7 +148,7 @@ class WindyParticleEngine {
       p.prevY = p.y;
       p.age++;
 
-      if (p.age >= p.maxLife || p.x < -40 || p.x > this.width + 40 || p.y < -40 || p.y > this.height + 40) {
+      if (p.age >= p.maxLife || p.x < -30 || p.x > this.width + 30 || p.y < -30 || p.y > this.height + 30) {
         this.resetParticle(p);
       }
     }
@@ -197,7 +161,7 @@ class WindyParticleEngine {
     p.age = 0;
     p.prevX = null;
     p.prevY = null;
-    p.speedFactor = 0.85 + Math.random() * 0.4;
+    p.speedFactor = 0.85 + Math.random() * 0.45;
     p.x = Math.random() * this.width;
     p.y = Math.random() * this.height;
   }
