@@ -1,8 +1,8 @@
-/**
- * Main Application Controller - Google Maps Weather Edition
- * Features: 70% real-scale Taiwan map, Windy particle animation,
- * 4 core layers (氣象雷達, 溫度, 風速, 累積雨量), mouse wheel & drag zoom/pan,
- * InfoWindows, and 360° compass.
+﻿/**
+ * Main Application Controller - Google Maps & CWA Weather Edition
+ * Features: CWA Wind Streamline Flow Map (Windy-style particles),
+ * Default pins for Taipei, Taichung, Kaohsiung (click to show others),
+ * 7-Day Weekly Weather Forecast, 4 meteorological layers, and 360° compass.
  */
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -13,21 +13,23 @@ document.addEventListener('DOMContentLoaded', () => {
   // 2. 應用狀態管理
   let activeStationId = '466920'; // 預設：臺北
   let activeLayer = 'wind';        // 預設為使用者要求的風速 'wind' | 'radar' | 'temp' | 'accumRain'
-  let activeRegion = 'all';
+  
+  // 使用者需求：地圖上的紅色水滴標籤預設只顯示台北、台中、高雄，其他點選再顯示
+  const BASE_STATION_IDS = ['466920', '467490', '467440']; // 臺北, 臺中, 高雄
+  let visibleStationIds = new Set(BASE_STATION_IDS);
 
   // 3. 初始化開源 GIS 框架 Leaflet 地圖 (臺灣真實地理比例居中)
-  // 臺灣中心大約 [23.7, 120.95]，縮放層級 7.8 ~ 8.0 完美填滿 70% 視圖
   const leafletMap = L.map('leafletMap', {
     center: [23.7, 120.95],
     zoom: 8,
     minZoom: 6,
     maxZoom: 14,
-    zoomControl: false, // 使用自訂 Google 風格浮動按鈕
+    zoomControl: false,
     attributionControl: true
   });
   window.leafletMap = leafletMap;
 
-  // 採用 Google Maps / CartoDB 高質感大地灰與清新海洋底圖 (亦可切換 OpenStreetMap)
+  // 採用 Google Maps / CartoDB 向量地圖瓦片
   L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
     attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
     subdomains: 'abcd',
@@ -46,13 +48,20 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // 4. 快取 DOM 節點
   const dom = {
-    // 頂部搜尋與狀態
-    gmapSearchInput: document.getElementById('gmapSearchInput'),
-    btnSearchSubmit: document.getElementById('btnSearchSubmit'),
+    // 頂部狀態與重新整理
     btnRefresh: document.getElementById('btnRefresh'),
     liveDot: document.getElementById('liveDot'),
     liveStatusText: document.getElementById('liveStatusText'),
     lastUpdatedText: document.getElementById('lastUpdatedText'),
+
+    // CWA 風場圖控制列與測站標籤
+    mapWindSummary: document.getElementById('mapWindSummary'),
+    btnPinTaipei: document.getElementById('btnPinTaipei'),
+    btnPinTaichung: document.getElementById('btnPinTaichung'),
+    btnPinKaohsiung: document.getElementById('btnPinKaohsiung'),
+    btnMoreStationToggle: document.getElementById('btnMoreStationToggle'),
+    moreStationDropdownMenu: document.getElementById('moreStationDropdownMenu'),
+    btnResetToThree: document.getElementById('btnResetToThree'),
 
     // 地圖與視圖
     mapFrame: document.getElementById('mapFrame'),
@@ -61,6 +70,10 @@ document.addEventListener('DOMContentLoaded', () => {
     currentLayerHint: document.getElementById('currentLayerHint'),
     scaleUnit: document.getElementById('scaleUnit'),
     scaleBlocksWrap: document.getElementById('scaleBlocksWrap'),
+
+    // 一週天氣預報
+    forecastStationName: document.getElementById('forecastStationName'),
+    forecastDaysGrid: document.getElementById('forecastDaysGrid'),
 
     // 地圖縮放控制器
     btnZoomIn: document.getElementById('btnZoomIn'),
@@ -87,6 +100,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // 詳細資訊清單
     sidebarAddress: document.getElementById('sidebarAddress'),
+    sidebarTemp: document.getElementById('sidebarTemp'),
     sidebarGustSpeed: document.getElementById('sidebarGustSpeed'),
     sidebarHumidity: document.getElementById('sidebarHumidity'),
     sidebarPressure: document.getElementById('sidebarPressure'),
@@ -98,19 +112,25 @@ document.addEventListener('DOMContentLoaded', () => {
    */
   function renderColorScale(layerId) {
     const layer = window.WEATHER_LAYERS[layerId] || window.WEATHER_LAYERS.wind;
+    if (!dom.scaleBlocksWrap) return;
+
     dom.scaleUnit.textContent = layer.unit;
-    dom.currentLayerHint.textContent = `目前：${layer.name}`;
+    if (dom.currentLayerHint) {
+      dom.currentLayerHint.textContent = `目前：${layer.name}`;
+    }
 
-    dom.scaleBlocksWrap.innerHTML = '';
-    layer.stops.forEach((stop, idx) => {
-      const seg = document.createElement('div');
-      seg.className = 'scale-block-seg';
-      seg.style.backgroundColor = layer.colors[idx];
-      seg.innerHTML = `<span class="scale-block-label">${stop}</span>`;
-      dom.scaleBlocksWrap.appendChild(seg);
-    });
+    let html = '';
+    for (let i = 0; i < layer.stops.length; i++) {
+      const stopVal = layer.stops[i];
+      const color = layer.colors[i];
+      html += `
+        <div class="scale-block" style="background-color: ${color};">
+          <span class="scale-stop-label">${stopVal}</span>
+        </div>
+      `;
+    }
+    dom.scaleBlocksWrap.innerHTML = html;
 
-    // 更新大氣疊層色彩
     if (dom.weatherOverlay) {
       dom.weatherOverlay.style.background = layer.overlayGradient || 'transparent';
       dom.weatherOverlay.style.opacity = layerId === 'wind' ? '0.35' : '0.65';
@@ -231,60 +251,221 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   /**
-   * 渲染 Leaflet 地圖上的所有測站標記
+   * 渲染 Leaflet 地圖上的測站標記
+   * 依使用者需求：預設只顯示臺北、臺中、高雄，其他點選時動態加入顯示
    */
   function renderMapPins() {
     const stations = window.weatherService.stations;
 
     stations.forEach(st => {
-      const isActive = st.id === activeStationId;
-      const html = createPinHtml(st, isActive);
+      const isVisible = visibleStationIds.has(st.id) || st.id === activeStationId;
 
-      const customIcon = L.divIcon({
-        html: html,
-        className: 'leaflet-custom-marker',
-        iconSize: [60, 48],
-        iconAnchor: [30, 48],
-        popupAnchor: [0, -48]
-      });
+      if (isVisible) {
+        const isActive = st.id === activeStationId;
+        const html = createPinHtml(st, isActive);
 
-      if (markersMap.has(st.id)) {
-        const marker = markersMap.get(st.id);
-        marker.setIcon(customIcon);
-        marker.setPopupContent(createPopupHtml(st));
-      } else {
-        const marker = L.marker([st.lat, st.lon], { icon: customIcon }).addTo(leafletMap);
-        marker.bindPopup(createPopupHtml(st));
-
-        marker.on('click', () => {
-          selectStation(st.id, false);
+        const customIcon = L.divIcon({
+          html: html,
+          className: 'leaflet-custom-marker',
+          iconSize: [60, 48],
+          iconAnchor: [30, 48],
+          popupAnchor: [0, -48]
         });
 
-        markersMap.set(st.id, marker);
+        if (markersMap.has(st.id)) {
+          const marker = markersMap.get(st.id);
+          marker.setIcon(customIcon);
+          marker.setPopupContent(createPopupHtml(st));
+          if (!leafletMap.hasLayer(marker)) {
+            marker.addTo(leafletMap);
+          }
+        } else {
+          const marker = L.marker([st.lat, st.lon], { icon: customIcon }).addTo(leafletMap);
+          marker.bindPopup(createPopupHtml(st));
+
+          marker.on('click', () => {
+            selectStation(st.id, false);
+          });
+
+          markersMap.set(st.id, marker);
+        }
+      } else {
+        // 若不屬於顯示名單，從地圖移除圖層
+        if (markersMap.has(st.id)) {
+          const marker = markersMap.get(st.id);
+          if (leafletMap.hasLayer(marker)) {
+            leafletMap.removeLayer(marker);
+          }
+        }
       }
     });
 
     // 預設若有活躍測站，開啟彈窗
     const activeMarker = markersMap.get(activeStationId);
-    if (activeMarker && !activeMarker.isPopupOpen()) {
+    if (activeMarker && leafletMap.hasLayer(activeMarker) && !activeMarker.isPopupOpen()) {
       activeMarker.openPopup();
     }
   }
 
+  /**
+   * 選取特定測站
+   */
   function selectStation(stationId, panTo = true) {
     activeStationId = stationId;
+    visibleStationIds.add(stationId); // 確保選中的測站顯示水滴標籤
+
     const st = window.weatherService.getStationById(stationId);
 
     if (panTo && st && leafletMap) {
-      leafletMap.flyTo([st.lat, st.lon], Math.max(leafletMap.getZoom(), 9), { duration: 0.8 });
+      leafletMap.flyTo([st.lat, st.lon], Math.max(leafletMap.getZoom(), 8.5), { duration: 0.8 });
+    }
+
+    // 更新風場引擎動態參數
+    if (st && windEngine) {
+      windEngine.setWind(st.windDeg, st.windSpeed);
     }
 
     renderMapPins();
     renderSidebarPlaceDetails();
+    renderWeeklyForecast(stationId);
+    updateStationFilterUI();
 
     const marker = markersMap.get(stationId);
-    if (marker) {
+    if (marker && leafletMap.hasLayer(marker)) {
       marker.openPopup();
+    }
+  }
+
+  /**
+   * 渲染地圖正下方的一週天氣預報 (7-Day Forecast)
+   */
+  function renderWeeklyForecast(stationId) {
+    if (!dom.forecastDaysGrid) return;
+    const st = window.weatherService.getStationById(stationId);
+    if (!st) return;
+
+    if (dom.forecastStationName) {
+      dom.forecastStationName.textContent = `${st.name}氣象站`;
+    }
+
+    const forecastList = window.weatherService.getWeeklyForecast(stationId);
+
+    let html = '';
+    forecastList.forEach(day => {
+      const todayClass = day.isToday ? 'today' : '';
+      html += `
+        <div class="forecast-day-card ${todayClass}" title="${day.dateStr} (${day.dayLabel}) ${day.weather}，降雨機率 ${day.rainProb}%">
+          <div class="f-day-label">${day.dayLabel}</div>
+          <div class="f-day-date">${day.dateStr}</div>
+          <div class="f-weather-icon">${day.icon}</div>
+          <div class="f-weather-condition">${day.weather}</div>
+          <div class="f-temp-row">
+            <span class="f-temp-max">${day.maxT}°</span>
+            <span class="f-temp-min">${day.minT}°</span>
+          </div>
+          <div class="f-temp-bar-container">
+            <div class="f-temp-bar-fill"></div>
+          </div>
+          <div class="f-pop-badge">
+            <span>💧</span>
+            <span>${day.rainProb}%</span>
+          </div>
+          <div class="f-wind-text">💨 ${day.windSpeed}m/s</div>
+        </div>
+      `;
+    });
+
+    dom.forecastDaysGrid.innerHTML = html;
+  }
+
+  /**
+   * 更新測站選擇標籤列的選取狀態
+   */
+  function updateStationFilterUI() {
+    // 1. 北中高按鈕選取樣式
+    if (dom.btnPinTaipei) dom.btnPinTaipei.classList.toggle('active', activeStationId === '466920');
+    if (dom.btnPinTaichung) dom.btnPinTaichung.classList.toggle('active', activeStationId === '467490');
+    if (dom.btnPinKaohsiung) dom.btnPinKaohsiung.classList.toggle('active', activeStationId === '467440');
+
+    // 2. 下拉選單項目的選取樣式
+    if (dom.moreStationDropdownMenu) {
+      dom.moreStationDropdownMenu.querySelectorAll('.more-station-item').forEach(item => {
+        const id = item.dataset.id;
+        const isSelected = activeStationId === id;
+        item.classList.toggle('active', isSelected);
+      });
+    }
+
+    // 3. 若有顯示除了臺北、臺中、高雄以外的測站，顯示「僅保留北中高」按鈕
+    const hasExtraStations = Array.from(visibleStationIds).some(id => !BASE_STATION_IDS.includes(id));
+    if (dom.btnResetToThree) {
+      dom.btnResetToThree.style.display = hasExtraStations ? 'inline-block' : 'none';
+    }
+
+    // 4. 更新地圖標題列風場摘要
+    const st = window.weatherService.getStationById(activeStationId);
+    if (st && dom.mapWindSummary) {
+      const dir = window.getWindDirectionText(st.windDeg);
+      dom.mapWindSummary.textContent = `${st.name}即時風場：${dir.name} (${st.windDeg}°) • 風速 ${st.windSpeed.toFixed(1)} m/s`;
+    }
+  }
+
+  /**
+   * 初始化測站標籤列與下拉選單
+   */
+  function initStationFilterUI() {
+    // 綁定臺北、臺中、高雄按鈕
+    if (dom.btnPinTaipei) {
+      dom.btnPinTaipei.addEventListener('click', () => selectStation('466920', true));
+    }
+    if (dom.btnPinTaichung) {
+      dom.btnPinTaichung.addEventListener('click', () => selectStation('467490', true));
+    }
+    if (dom.btnPinKaohsiung) {
+      dom.btnPinKaohsiung.addEventListener('click', () => selectStation('467440', true));
+    }
+
+    // 生成其他 19 個縣市測站標籤按鈕
+    if (dom.moreStationDropdownMenu) {
+      const otherStations = window.weatherService.stations.filter(s => !BASE_STATION_IDS.includes(s.id));
+      let menuHtml = '';
+      otherStations.forEach(st => {
+        menuHtml += `<div class="more-station-item" data-id="${st.id}">📍 ${st.name}</div>`;
+      });
+      dom.moreStationDropdownMenu.innerHTML = menuHtml;
+
+      // 監聽其他測站點擊
+      dom.moreStationDropdownMenu.addEventListener('click', (e) => {
+        const item = e.target.closest('.more-station-item');
+        if (!item) return;
+        const stationId = item.dataset.id;
+        visibleStationIds.add(stationId); // 點選加入地圖標籤顯示
+        selectStation(stationId, true);
+        dom.moreStationDropdownMenu.classList.remove('show');
+      });
+    }
+
+    // 更多測站按鈕開關
+    if (dom.btnMoreStationToggle && dom.moreStationDropdownMenu) {
+      dom.btnMoreStationToggle.addEventListener('click', (e) => {
+        e.stopPropagation();
+        dom.moreStationDropdownMenu.classList.toggle('show');
+      });
+
+      document.addEventListener('click', () => {
+        dom.moreStationDropdownMenu.classList.remove('show');
+      });
+    }
+
+    // 點擊「僅保留北中高」按鈕
+    if (dom.btnResetToThree) {
+      dom.btnResetToThree.addEventListener('click', () => {
+        visibleStationIds = new Set(BASE_STATION_IDS);
+        if (!BASE_STATION_IDS.includes(activeStationId)) {
+          activeStationId = '466920'; // 預設回臺北
+        }
+        selectStation(activeStationId, false);
+      });
     }
   }
 
@@ -300,62 +481,57 @@ document.addEventListener('DOMContentLoaded', () => {
     const feelsLike = calculateFeelsLike(st.temp, st.hum, st.windSpeed);
 
     // 1. 測站地標抬頭
-    dom.sidebarStationName.textContent = `${st.name}氣象站`;
-    dom.sidebarCountyName.textContent = `${st.county} · 即時觀測`;
-    dom.sidebarWeatherIcon.textContent = getWeatherIcon(st.weather);
-    dom.sidebarWeatherText.textContent = st.weather;
+    if (dom.sidebarStationName) dom.sidebarStationName.textContent = `${st.name}氣象站`;
+    if (dom.sidebarCountyName) dom.sidebarCountyName.textContent = `${st.county} · CWA 即時觀測`;
+    if (dom.sidebarWeatherIcon) dom.sidebarWeatherIcon.textContent = getWeatherIcon(st.weather);
+    if (dom.sidebarWeatherText) dom.sidebarWeatherText.textContent = st.weather;
 
     // 2. 依當前圖層顯示巨幅主數值
     switch (activeLayer) {
       case 'radar':
         const radarVal = st.rain > 0 ? Math.min(55, Math.round(st.rain * 12 + 25)) : 15;
-        dom.sidebarMainVal.textContent = radarVal;
-        dom.sidebarMainUnit.textContent = 'dBZ';
-        dom.sidebarSubText.textContent = radarVal > 30 ? '雷達回波增強，鄰近空域有較強降雨對流胞' : '雷達回波弱，海峽與陸地空域乾淨良好';
+        if (dom.sidebarMainVal) dom.sidebarMainVal.textContent = radarVal;
+        if (dom.sidebarMainUnit) dom.sidebarMainUnit.textContent = 'dBZ';
+        if (dom.sidebarSubText) dom.sidebarSubText.textContent = radarVal > 30 ? '雷達回波增強，鄰近空域有較強降雨對流胞' : '雷達回波弱，海峽與陸地空域乾淨良好';
         break;
       case 'temp':
-        dom.sidebarMainVal.textContent = st.temp.toFixed(1);
-        dom.sidebarMainUnit.textContent = '°C';
-        dom.sidebarSubText.textContent = `體感溫度 ${feelsLike.toFixed(1)}°C • ${st.weather}`;
+        if (dom.sidebarMainVal) dom.sidebarMainVal.textContent = st.temp.toFixed(1);
+        if (dom.sidebarMainUnit) dom.sidebarMainUnit.textContent = '°C';
+        if (dom.sidebarSubText) dom.sidebarSubText.textContent = `體感溫度 ${feelsLike.toFixed(1)}°C • 相對濕度 ${st.hum}%`;
         break;
       case 'wind':
-        dom.sidebarMainVal.textContent = st.windSpeed.toFixed(1);
-        dom.sidebarMainUnit.textContent = 'm/s';
-        dom.sidebarSubText.textContent = `${dirInfo.name} (${st.windDeg}°) • 蒲福氏 ${beaufort.scale}級 ${beaufort.level}`;
+        if (dom.sidebarMainVal) dom.sidebarMainVal.textContent = st.windSpeed.toFixed(1);
+        if (dom.sidebarMainUnit) dom.sidebarMainUnit.textContent = 'm/s';
+        if (dom.sidebarSubText) dom.sidebarSubText.textContent = `${beaufort.scale} • ${dirInfo.name} (${st.windDeg}°)`;
         break;
       case 'accumRain':
-        dom.sidebarMainVal.textContent = st.rain.toFixed(1);
-        dom.sidebarMainUnit.textContent = 'mm';
-        dom.sidebarSubText.textContent = st.rain > 0 ? `本日累積降雨量 ${st.rain}mm` : '本日尚無降雨記錄，天空乾爽';
-        break;
-      default:
-        dom.sidebarMainVal.textContent = st.windSpeed.toFixed(1);
-        dom.sidebarMainUnit.textContent = 'm/s';
-        dom.sidebarSubText.textContent = `${dirInfo.name} (${st.windDeg}°)`;
+        if (dom.sidebarMainVal) dom.sidebarMainVal.textContent = st.rain.toFixed(1);
+        if (dom.sidebarMainUnit) dom.sidebarMainUnit.textContent = 'mm';
+        if (dom.sidebarSubText) dom.sidebarSubText.textContent = st.rain > 0 ? `目前有降雨 (${st.weather})` : '本日累積雨量為零，氣候乾燥穩定';
         break;
     }
 
-    // 3. 羅盤指針與旋轉風杯即時連動
-    dom.compassNeedle.style.transform = `rotate(${st.windDeg}deg)`;
-    const spinDuration = Math.max(0.25, 5.0 / Math.max(st.windSpeed, 0.5));
-    dom.anemometerRotor.style.animationDuration = `${spinDuration.toFixed(2)}s`;
+    // 3. 360° 羅盤與風杯連動
+    if (dom.sidebarBeaufortBadge) dom.sidebarBeaufortBadge.textContent = beaufort.scale;
+    if (dom.sidebarWindDir) dom.sidebarWindDir.textContent = `${dirInfo.name} (${st.windDeg}°)`;
+    if (dom.sidebarWindSpeed) dom.sidebarWindSpeed.textContent = `${st.windSpeed.toFixed(1)} m/s`;
 
-    dom.sidebarBeaufortBadge.textContent = `${beaufort.scale}級 ${beaufort.level}`;
-    dom.sidebarBeaufortBadge.style.backgroundColor = `${beaufort.color}18`;
-    dom.sidebarBeaufortBadge.style.color = beaufort.color;
+    if (dom.compassNeedle) {
+      dom.compassNeedle.style.transform = `translate(-50%, -50%) rotate(${st.windDeg}deg)`;
+    }
 
-    dom.sidebarWindDir.textContent = `${dirInfo.name} (${st.windDeg}°)`;
-    dom.sidebarWindSpeed.textContent = `${st.windSpeed.toFixed(1)} m/s (${(st.windSpeed * 3.6).toFixed(1)} km/h)`;
+    if (dom.anemometerRotor) {
+      const duration = Math.max(0.3, Math.min(2.5, 4.0 / (st.windSpeed + 0.5)));
+      dom.anemometerRotor.style.animationDuration = `${duration.toFixed(2)}s`;
+    }
 
-    // 4. 同步更新底層 Windy 動態風場流線粒子流向與速度
-    windEngine.setWind(st.windDeg, st.windSpeed);
-
-    // 5. 詳細項目清單
-    dom.sidebarAddress.textContent = `${st.lat ? st.lat.toFixed(2) : '25.04'}°N, ${st.lon ? st.lon.toFixed(2) : '121.51'}°E • ${st.address || st.county}`;
-    dom.sidebarGustSpeed.textContent = `${st.windSpeed.toFixed(1)} m/s (${(st.windSpeed * 3.6).toFixed(1)} km/h) • 瞬間最大陣風 ${st.gust.toFixed(1)} m/s`;
-    dom.sidebarHumidity.textContent = `${st.hum}% (${st.hum > 75 ? '微潮濕' : '舒適乾燥'})`;
-    dom.sidebarPressure.textContent = `${st.pres.toFixed(1)} hPa`;
-    dom.sidebarRain.textContent = `${st.rain.toFixed(1)} mm (${st.rain > 0 ? '有降雨' : '目前無降雨'})`;
+    // 4. 詳細清單數值
+    if (dom.sidebarAddress) dom.sidebarAddress.textContent = `${st.lat.toFixed(2)}°N, ${st.lon.toFixed(2)}°E • ${st.address || st.county}`;
+    if (dom.sidebarTemp) dom.sidebarTemp.textContent = `${st.temp.toFixed(1)}°C (體感 ${feelsLike.toFixed(1)}°C)`;
+    if (dom.sidebarGustSpeed) dom.sidebarGustSpeed.textContent = `${st.windSpeed.toFixed(1)} m/s (${(st.windSpeed * 3.6).toFixed(1)} km/h) • 瞬間陣風 ${st.gust.toFixed(1)} m/s`;
+    if (dom.sidebarHumidity) dom.sidebarHumidity.textContent = `${st.hum}% (${st.hum > 75 ? '偏潮濕' : '舒適乾燥'})`;
+    if (dom.sidebarPressure) dom.sidebarPressure.textContent = `${st.pres.toFixed(1)} hPa`;
+    if (dom.sidebarRain) dom.sidebarRain.textContent = `${st.rain.toFixed(1)} mm ${st.rain > 0 ? '(有降雨)' : '(無降雨)'}`;
   }
 
   /**
@@ -379,48 +555,38 @@ document.addEventListener('DOMContentLoaded', () => {
    * CWA API 重新擷取
    */
   async function refreshData() {
-    dom.btnRefresh.classList.add('spinning');
-    dom.btnRefresh.disabled = true;
+    if (dom.btnRefresh) {
+      dom.btnRefresh.classList.add('spinning');
+      dom.btnRefresh.disabled = true;
+    }
 
     try {
       const res = await window.weatherService.fetchLiveStations();
       if (res.isLive) {
-        dom.liveDot.style.backgroundColor = 'var(--g-green)';
-        dom.liveStatusText.textContent = '即時連線 (CWA)';
+        if (dom.liveDot) dom.liveDot.style.backgroundColor = 'var(--g-green)';
+        if (dom.liveStatusText) dom.liveStatusText.textContent = '即時連線 (CWA)';
       } else {
-        dom.liveDot.style.backgroundColor = 'var(--g-yellow)';
-        dom.liveStatusText.textContent = '快取備用模式';
+        if (dom.liveDot) dom.liveDot.style.backgroundColor = 'var(--g-yellow)';
+        if (dom.liveStatusText) dom.liveStatusText.textContent = '快取備用模式';
       }
 
-      dom.lastUpdatedText.textContent = `更新: ${formatTime(window.weatherService.lastUpdated)}`;
+      if (dom.lastUpdatedText) {
+        dom.lastUpdatedText.textContent = `更新: ${formatTime(window.weatherService.lastUpdated)}`;
+      }
+
       renderMapPins();
       renderSidebarPlaceDetails();
+      renderWeeklyForecast(activeStationId);
+      updateStationFilterUI();
     } catch (err) {
       console.error('更新失敗:', err);
     } finally {
       setTimeout(() => {
-        dom.btnRefresh.classList.remove('spinning');
-        dom.btnRefresh.disabled = false;
+        if (dom.btnRefresh) {
+          dom.btnRefresh.classList.remove('spinning');
+          dom.btnRefresh.disabled = false;
+        }
       }, 600);
-    }
-  }
-
-  /**
-   * 搜尋縣市或測站
-   */
-  function executeSearch() {
-    const query = dom.gmapSearchInput.value.trim().toLowerCase();
-    if (!query) return;
-
-    const matched = window.weatherService.stations.find(s => 
-      s.name.toLowerCase().includes(query) || 
-      s.county.toLowerCase().includes(query)
-    );
-
-    if (matched) {
-      selectStation(matched.id, true);
-    } else {
-      alert(`找不到與「${query}」相符的測站，請嘗試搜尋其他縣市名稱。`);
     }
   }
 
@@ -428,7 +594,7 @@ document.addEventListener('DOMContentLoaded', () => {
   // 事件監聽綁定
   // =========================================================================
 
-  // 1. 使用者指定的 4 大圖層切換 (氣象雷達, 溫度, 風速, 累積雨量)
+  // 1. 4 大圖層切換 (氣象雷達, 溫度, 風速, 累積雨量)
   if (dom.layerSelectorGrid) {
     dom.layerSelectorGrid.addEventListener('click', (e) => {
       const btn = e.target.closest('.layer-btn-item');
@@ -442,40 +608,42 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  // 2. 搜尋相關
-  dom.btnSearchSubmit.addEventListener('click', executeSearch);
-  dom.gmapSearchInput.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter') executeSearch();
-  });
+  // 2. 地圖縮放與復位
+  if (dom.btnZoomIn) dom.btnZoomIn.addEventListener('click', zoomIn);
+  if (dom.btnZoomOut) dom.btnZoomOut.addEventListener('click', zoomOut);
+  if (dom.btnRecenter) dom.btnRecenter.addEventListener('click', resetView);
 
-  // 3. 地圖縮放與復位
-  dom.btnZoomIn.addEventListener('click', zoomIn);
-  dom.btnZoomOut.addEventListener('click', zoomOut);
-  dom.btnRecenter.addEventListener('click', resetView);
+  // 3. 手動刷新按鈕
+  if (dom.btnRefresh) dom.btnRefresh.addEventListener('click', refreshData);
+  if (dom.btnQuickRefresh) dom.btnQuickRefresh.addEventListener('click', refreshData);
 
-  // 4. 手動刷新按鈕
-  dom.btnRefresh.addEventListener('click', refreshData);
-  dom.btnQuickRefresh.addEventListener('click', refreshData);
-
-  // 5. 複製分享數據
-  dom.btnCopyData.addEventListener('click', () => {
-    const st = window.weatherService.getStationById(activeStationId);
-    if (!st) return;
-    const text = `【臺灣即時氣候】${st.county} · ${st.name}氣象站：氣溫 ${st.temp}°C，${st.weather}，風向 ${window.getWindDirectionText(st.windDeg).name} ${st.windSpeed}m/s，降雨量 ${st.rain}mm。`;
-    navigator.clipboard.writeText(text).then(() => {
-      alert('已成功複製測站氣象資訊至剪貼簿！');
-    }).catch(() => {
-      prompt('請複製以下文字：', text);
+  // 4. 複製分享數據
+  if (dom.btnCopyData) {
+    dom.btnCopyData.addEventListener('click', () => {
+      const st = window.weatherService.getStationById(activeStationId);
+      if (!st) return;
+      const text = `【臺灣即時氣象】${st.county} · ${st.name}氣象站：氣溫 ${st.temp}°C，${st.weather}，風向 ${window.getWindDirectionText(st.windDeg).name} ${st.windSpeed}m/s，降雨量 ${st.rain}mm。`;
+      navigator.clipboard.writeText(text).then(() => {
+        alert('已成功複製測站氣象資訊至剪貼簿！');
+      }).catch(() => {
+        prompt('請複製以下文字：', text);
+      });
     });
-  });
+  }
 
   // =========================================================================
   // 初始啟動
   // =========================================================================
-  dom.lastUpdatedText.textContent = `更新: ${formatTime(new Date())}`;
+  if (dom.lastUpdatedText) {
+    dom.lastUpdatedText.textContent = `更新: ${formatTime(new Date())}`;
+  }
+  
+  initStationFilterUI();
   renderColorScale(activeLayer);
   renderMapPins();
   renderSidebarPlaceDetails();
+  renderWeeklyForecast(activeStationId);
+  updateStationFilterUI();
 
   // 確保 Leaflet 容器尺寸正確運算
   setTimeout(() => {

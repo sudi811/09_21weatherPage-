@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Weather Data Manager - Real-Scale Taiwan Weather Dashboard
  * Features: CWA Open Data API integration, real-scale geographic coordinates,
  * 4 primary layers (氣象雷達, 溫度, 風速, 累積雨量), and place descriptions.
@@ -203,6 +203,71 @@ class WeatherService {
         }
       }
     }
+  }
+
+  /**
+   * 取得指定測站的未來 7 日天氣預報資料 (CWA 格式相容)
+   */
+  getWeeklyForecast(stationId) {
+    const station = this.getStationById(stationId);
+    const dayNames = ['週日', '週一', '週二', '週三', '週四', '週五', '週六'];
+    const now = new Date();
+    const forecast = [];
+
+    const baseTemp = station.temp || 26.5;
+    const baseRain = station.rain || 0;
+    
+    // 天氣現象候選清單
+    const weatherList = [
+      { name: '晴朗', icon: '☀️', pop: 10, maxDiff: 3.2, minDiff: -4.5 },
+      { name: '晴時多雲', icon: '🌤️', pop: 20, maxDiff: 2.8, minDiff: -4.0 },
+      { name: '多雲時晴', icon: '🌤️', pop: 25, maxDiff: 2.5, minDiff: -3.8 },
+      { name: '多雲', icon: '⛅', pop: 30, maxDiff: 1.8, minDiff: -3.5 },
+      { name: '陰天', icon: '☁️', pop: 40, maxDiff: 0.5, minDiff: -3.0 },
+      { name: '陰短暫雨', icon: '🌦️', pop: 55, maxDiff: -0.5, minDiff: -2.8 },
+      { name: '多雲短暫陣雨', icon: '🌧️', pop: 65, maxDiff: -1.2, minDiff: -2.5 },
+      { name: '午後雷陣雨', icon: '⛈️', pop: 75, maxDiff: 1.5, minDiff: -3.2 }
+    ];
+
+    for (let i = 0; i < 7; i++) {
+      const targetDate = new Date();
+      targetDate.setDate(now.getDate() + i);
+
+      const m = targetDate.getMonth() + 1;
+      const d = targetDate.getDate();
+      const dateStr = `${m}/${d}`;
+      const dayOfWeek = dayNames[targetDate.getDay()];
+      const dayLabel = i === 0 ? '今天' : (i === 1 ? '明天' : dayOfWeek);
+
+      // 基於測站與天數計算穩定偽隨機種子
+      const seed = Math.abs((station.name.charCodeAt(0) * 11 + i * 5 + Math.floor(station.lat * 10)) % weatherList.length);
+      const wItem = i === 0 
+        ? { name: station.weather || '晴時多雲', icon: '🌤️', pop: (baseRain > 0 ? 60 : 20), maxDiff: 2.5, minDiff: -4.0 }
+        : weatherList[seed];
+
+      const maxT = Math.round(baseTemp + wItem.maxDiff + Math.sin(i * 0.9) * 1.5);
+      const minT = Math.round(baseTemp + wItem.minDiff - Math.cos(i * 0.8) * 1.0);
+      const rainProb = Math.min(95, Math.max(10, Math.round(wItem.pop + Math.sin(i * 1.3) * 15)));
+
+      const dirInfo = getWindDirectionText(station.windDeg + (i * 20) % 60);
+      const windSpeed = Math.max(1.8, Math.round((station.windSpeed + Math.sin(i * 1.1) * 1.2) * 10) / 10);
+
+      forecast.push({
+        dayIndex: i,
+        dateStr,
+        dayLabel,
+        isToday: i === 0,
+        weather: wItem.name,
+        icon: wItem.icon,
+        maxT,
+        minT,
+        rainProb,
+        windDir: dirInfo.name,
+        windSpeed
+      });
+    }
+
+    return forecast;
   }
 
   getStationById(id) {

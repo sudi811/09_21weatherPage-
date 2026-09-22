@@ -1252,3 +1252,472 @@ body {
     top: 54px;
   }
 }
+
+/* ==========================================================================
+   新增樣式：CWA 頂部品牌列（替代原有搜尋欄）
+   ========================================================================== */
+.cwa-top-brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.brand-logo-pin {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  background: #ffffff;
+  border-radius: 50%;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.12);
+  border: 1px solid var(--g-border-light);
+}
+
+.brand-headings {
+  display: flex;
+  flex-direction: column;
+}
+
+.brand-title {
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: var(--g-text-primary);
+  letter-spacing: -0.01em;
+  margin: 0;
+}
+
+.brand-tagline {
+  font-size: 0.78rem;
+  color: var(--g-text-secondary);
+}
+
+.status-refresh-btn {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px;
+  border-radius: 50%;
+  transition: transform 0.25s ease, background 0.2s ease;
+  margin-left: 4px;
+}
+
+.status-refresh-btn:hover {
+  background: rgba(26, 115, 232, 0.1);
+  transform: rotate(60deg);
+}
+
+/* ==========================================================================
+   新增樣式：CWA 風場圖控制列與測站標籤選擇器
+   ========================================================================== */
+.cwa-map-control-bar {
+  background: var(--g-surface);
+  border: 1px solid var(--g-border-light);
+  border-radius: 14px;
+  padding: 16px 20px;
+  margin-bottom: 12px;
+  box-shadow: 0 1px 3px rgba(60,64,67,0.1);
+}
+
+.cwa-map-title-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.cwa-title-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.cwa-badge-pill {
+  background: #1A73E8;
+  color: #ffffff;
+  font-size: 0.72rem;
+  font-weight: 700;
+  padding: 3px 8px;
+  border-radius: 4px;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.cwa-map-title {
+  font-size: 1.12rem;
+  font-weight: 700;
+  color: var(--g-text-primary);
+  margin: 0;
+}
+
+.cwa-wind-status-tag {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: #155724;
+  background: #D4EDDA;
+  border: 1px solid #C3E6CB;
+  padding: 4px 12px;
+  border-radius: 20px;
+  display: inline-flex;
+  align-items: center;
+}
+
+.station-filter-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  padding-top: 10px;
+  border-top: 1px solid #F1F3F4;
+}
+
+.filter-hint {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--g-text-secondary);
+}
+
+.base-stations-group {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.city-tag-btn {
+  background: #F8F9FA;
+  border: 1px solid var(--g-border);
+  color: var(--g-text-primary);
+  padding: 6px 14px;
+  border-radius: 20px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.city-tag-btn:hover {
+  background: #E8F0FE;
+  border-color: #1A73E8;
+  color: #1A73E8;
+  transform: translateY(-1px);
+}
+
+.city-tag-btn.active {
+  background: #EA4335;
+  border-color: #EA4335;
+  color: #ffffff;
+  box-shadow: 0 2px 6px rgba(234, 67, 53, 0.35);
+}
+
+/* 更多測站下拉 */
+.more-station-dropdown-wrap {
+  position: relative;
+}
+
+.more-station-btn {
+  background: #ffffff;
+  border: 1px solid #1A73E8;
+  color: #1A73E8;
+  padding: 6px 14px;
+  border-radius: 20px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  transition: all 0.2s ease;
+}
+
+.more-station-btn:hover {
+  background: #1A73E8;
+  color: #ffffff;
+}
+
+.more-station-dropdown-menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  background: #ffffff;
+  border: 1px solid var(--g-border);
+  border-radius: 12px;
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.18);
+  padding: 12px;
+  width: 320px;
+  max-height: 280px;
+  overflow-y: auto;
+  z-index: 1000;
+  display: none;
+}
+
+.more-station-dropdown-menu.show {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
+}
+
+.more-station-item {
+  background: #F8F9FA;
+  border: 1px solid #E8EAED;
+  padding: 6px 8px;
+  border-radius: 6px;
+  font-size: 0.8rem;
+  font-weight: 500;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.more-station-item:hover {
+  background: #E8F0FE;
+  color: #1A73E8;
+  border-color: #1A73E8;
+}
+
+.more-station-item.active {
+  background: #EA4335;
+  color: #ffffff;
+  border-color: #EA4335;
+}
+
+.reset-pins-btn {
+  background: transparent;
+  border: 1px dashed #80868B;
+  color: #5F6368;
+  padding: 5px 12px;
+  border-radius: 20px;
+  font-size: 0.78rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  margin-left: auto;
+}
+
+.reset-pins-btn:hover {
+  background: #F1F3F4;
+  color: #202124;
+  border-color: #202124;
+}
+
+/* ==========================================================================
+   新增樣式：一週天氣預報卡片 (7-Day Forecast Card)
+   ========================================================================== */
+.weekly-forecast-card {
+  background: var(--g-surface);
+  border: 1px solid var(--g-border-light);
+  border-radius: 14px;
+  padding: 20px 22px;
+  margin-top: 16px;
+  box-shadow: 0 1px 4px rgba(60,64,67,0.1);
+}
+
+.forecast-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid #F1F3F4;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.f-header-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.f-icon-badge {
+  font-size: 1.5rem;
+  background: #F1F3F4;
+  width: 42px;
+  height: 42px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.f-card-title {
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--g-text-primary);
+  margin: 0 0 2px 0;
+}
+
+.f-card-subtitle {
+  font-size: 0.78rem;
+  color: var(--g-text-secondary);
+  margin: 0;
+}
+
+.f-header-right {
+  display: flex;
+  align-items: center;
+}
+
+.f-legend-tag {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 0.75rem;
+  color: var(--g-text-secondary);
+  background: #F8F9FA;
+  padding: 4px 10px;
+  border-radius: 12px;
+  border: 1px solid #E8EAED;
+}
+
+.f-legend-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  display: inline-block;
+}
+
+.f-legend-dot.dot-max {
+  background: #EA4335;
+}
+
+.f-legend-dot.dot-min {
+  background: #1A73E8;
+}
+
+/* 7 天預報網格 */
+.forecast-days-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 10px;
+}
+
+.forecast-day-card {
+  background: #F8F9FA;
+  border: 1px solid #E8EAED;
+  border-radius: 10px;
+  padding: 12px 8px;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  transition: all 0.2s ease;
+  position: relative;
+  cursor: default;
+}
+
+.forecast-day-card:hover {
+  background: #ffffff;
+  border-color: #1A73E8;
+  box-shadow: 0 4px 12px rgba(26, 115, 232, 0.12);
+  transform: translateY(-2px);
+}
+
+.forecast-day-card.today {
+  background: #E8F0FE;
+  border-color: #1A73E8;
+}
+
+.f-day-label {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--g-text-primary);
+}
+
+.forecast-day-card.today .f-day-label {
+  color: #1A73E8;
+}
+
+.f-day-date {
+  font-size: 0.75rem;
+  color: var(--g-text-faint);
+  font-family: var(--font-mono, monospace);
+}
+
+.f-weather-icon {
+  font-size: 1.8rem;
+  line-height: 1;
+  margin: 4px 0;
+}
+
+.f-weather-condition {
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--g-text-secondary);
+  height: 2.2em;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+}
+
+.f-temp-row {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  margin-top: 4px;
+}
+
+.f-temp-max {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: #D93025;
+}
+
+.f-temp-min {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: #1A73E8;
+}
+
+.f-temp-bar-container {
+  width: 80%;
+  height: 4px;
+  background: #E8EAED;
+  border-radius: 2px;
+  overflow: hidden;
+  margin: 2px 0 4px;
+}
+
+.f-temp-bar-fill {
+  height: 100%;
+  border-radius: 2px;
+  background: linear-gradient(90deg, #1A73E8, #FBBC04, #EA4335);
+}
+
+.f-pop-badge {
+  font-size: 0.72rem;
+  color: #155724;
+  background: #E6F4EA;
+  padding: 2px 6px;
+  border-radius: 4px;
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.f-wind-text {
+  font-size: 0.7rem;
+  color: var(--g-text-faint);
+}
+
+/* 響應式調整 */
+@media (max-width: 900px) {
+  .forecast-days-grid {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}
+
+@media (max-width: 600px) {
+  .forecast-days-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  .cwa-map-title-row {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}

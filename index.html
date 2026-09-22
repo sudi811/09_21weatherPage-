@@ -1,10 +1,10 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="zh-TW">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="description" content="臺灣即時氣象地圖 — 70%真實比例可縮放地圖，結合 Windy 動態風場流線粒子動畫與氣象雷達、溫度、風速、累積雨量圖層切換。">
-  <title>臺灣即時氣候地圖 | Real-Scale Weather & Wind Flow</title>
+  <meta name="description" content="臺灣即時氣象地圖 — 中央氣象署 (CWA) 風場流線動態粒子模擬與一週氣溫趨勢預報，即時氣象雷達、溫度、風速、雨量觀測。">
+  <title>臺灣即時氣象地圖 | CWA 風場流線圖與一週預報</title>
   <!-- Leaflet GIS 開源地圖框架 -->
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
@@ -15,39 +15,18 @@
 
   <div class="gmap-app-container">
 
-    <!-- 頂部 Google Maps 經典浮動搜尋列與狀態 -->
+    <!-- 頂部列：無搜索欄，改為簡約專業品牌標題與連線狀態 -->
     <header class="gmap-top-bar">
-      <div class="search-box-card">
-        <div class="search-menu-btn" title="選單">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#5F6368" stroke-width="2.2">
-            <line x1="3" y1="12" x2="21" y2="12"/>
-            <line x1="3" y1="6" x2="21" y2="6"/>
-            <line x1="3" y1="18" x2="21" y2="18"/>
-          </svg>
-        </div>
-
-        <div class="g-pin-logo" title="Google Maps 氣象風格">
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="#EA4335">
+      <div class="cwa-top-brand">
+        <div class="brand-logo-pin">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="#EA4335">
             <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/>
           </svg>
         </div>
-
-        <input type="text" class="gmap-search-input" id="gmapSearchInput" placeholder="搜尋全臺縣市或測站（例如：臺中、高雄、花蓮）..." aria-label="搜尋測站">
-
-        <button class="search-action-btn" id="btnSearchSubmit" title="搜尋">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#5F6368" stroke-width="2.2">
-            <circle cx="11" cy="11" r="8"/>
-            <line x1="21" y1="21" x2="16.65" y2="16.65"/>
-          </svg>
-        </button>
-
-        <div class="search-divider"></div>
-
-        <button class="search-action-btn refresh-btn" id="btnRefresh" title="重新擷取中央氣象署最新數據">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#1A73E8" stroke-width="2.2" stroke-linecap="round">
-            <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/>
-          </svg>
-        </button>
+        <div class="brand-headings">
+          <h1 class="brand-title">臺灣即時氣象與 CWA 風場觀測平臺</h1>
+          <span class="brand-tagline">中央氣象署 CWA 即時風場流線 • 4大氣象圖層 • 一週趨勢預報</span>
+        </div>
       </div>
 
       <!-- 連線狀態膠囊 -->
@@ -55,29 +34,76 @@
         <span class="live-dot" id="liveDot"></span>
         <span id="liveStatusText">即時連線 (CWA)</span>
         <span class="pill-divider">•</span>
-        <span id="lastUpdatedText">更新: --:--</span>
+        <span id="lastUpdatedText">更新中...</span>
+        <button class="status-refresh-btn" id="btnRefresh" title="重新擷取中央氣象署最新數據">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#1A73E8" stroke-width="2.2" stroke-linecap="round">
+            <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/>
+          </svg>
+        </button>
       </div>
     </header>
 
-    <!-- 主體內容：70% 居中真實比例地圖 + 30% 右側圖層與資訊欄 -->
+    <!-- 主體內容：左側 70% 風場圖與一週預報 + 右側 30% 圖層與資訊欄 -->
     <main class="gmap-main-grid">
 
       <!-- ====================================================================
-           主視覺 (佔螢幕 70%)：Leaflet 真實比例可縮放地圖 + Windy 風場粒子動畫
+           主視覺 (佔螢幕 70%)：CWA 風場地圖 + 測站標籤切換 + 一週預報
            ==================================================================== -->
       <section class="gmap-viewport-section">
+        
+        <!-- CWA 風場圖頂部資訊列與測站標籤選擇器 -->
+        <div class="cwa-map-control-bar">
+          <div class="cwa-map-title-row">
+            <div class="cwa-title-left">
+              <span class="cwa-badge-pill">CWA 風場圖</span>
+              <h2 class="cwa-map-title">中央氣象署 臺灣即時風場流線圖</h2>
+            </div>
+            <div class="cwa-wind-status-tag" id="mapWindSummary">
+              即時風場粒子動畫 • CWA 實時連動
+            </div>
+          </div>
+
+          <!-- 測站水滴標籤選擇器 (預設僅顯示臺北、臺中、高雄，其他點選再顯示) -->
+          <div class="station-filter-bar">
+            <span class="filter-hint">地圖標籤：</span>
+            <div class="base-stations-group">
+              <button class="city-tag-btn active" data-id="466920" id="btnPinTaipei">📍 臺北</button>
+              <button class="city-tag-btn" data-id="467490" id="btnPinTaichung">📍 臺中</button>
+              <button class="city-tag-btn" data-id="467440" id="btnPinKaohsiung">📍 高雄</button>
+            </div>
+
+            <!-- 下拉點選顯示其他測站 -->
+            <div class="more-station-dropdown-wrap">
+              <button class="more-station-btn" id="btnMoreStationToggle" type="button">
+                <span>＋ 點選顯示其他測站</span>
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M7 10l5 5 5-5z"/>
+                </svg>
+              </button>
+              <div class="more-station-dropdown-menu" id="moreStationDropdownMenu">
+                <!-- 由 JS 動態注入其他 19 個縣市測站按鈕 -->
+              </div>
+            </div>
+
+            <button class="reset-pins-btn" id="btnResetToThree" type="button" title="重設地圖標籤，只保留臺北、臺中、高雄" style="display: none;">
+              ✕ 僅保留北中高
+            </button>
+          </div>
+        </div>
+
+        <!-- 地圖畫框 (Leaflet + Windy 風場流線粒子 Canvas) -->
         <div class="gmap-frame" id="mapFrame">
           
-          <!-- Leaflet 地圖容器 (真實比例、居中臺灣、OpenStreetMap/CartoDB 向量地圖瓦片) -->
+          <!-- Leaflet 地圖容器 -->
           <div id="leafletMap" class="leaflet-map-stage"></div>
 
           <!-- 大氣熱力漸層層 (雷達/溫度/降雨) -->
           <div class="map-weather-overlay" id="weatherOverlay"></div>
 
-          <!-- Windy 風格動態風場流線粒子 Canvas (置於 Leaflet 瓦片上方，滑鼠穿透) -->
+          <!-- Windy 風格動態風場流線粒子 Canvas -->
           <canvas id="windCanvas"></canvas>
 
-          <!-- 右下角 Google Maps 經典浮動縮放與復位控制器 -->
+          <!-- 右下角浮動控制鈕 -->
           <div class="gmap-controls">
             <button class="gmap-ctrl-btn" id="btnZoomIn" title="放大 (+)">
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#5F6368" stroke-width="2.5">
@@ -109,15 +135,42 @@
               <svg width="14" height="14" viewBox="0 0 24 24" fill="#EA4335">
                 <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z"/>
               </svg>
-              <span>Leaflet 測站 Pin (點擊展開 Google 氣泡)</span>
+              <span>預設僅標註臺北、臺中、高雄 (點選上方可加顯其他測站)</span>
             </div>
             <div class="gmap-legend-row">
               <span class="wind-flow-indicator">💨</span>
-              <span>Windy 即時動態粒子氣流</span>
+              <span>CWA 即時動態粒子氣流風場</span>
             </div>
           </div>
 
         </div>
+
+        <!-- ====================================================================
+             地圖正下方：一週天氣預報 (7-Day Forecast)
+             ==================================================================== -->
+        <section class="weekly-forecast-card" id="weeklyForecastCard">
+          <div class="forecast-card-header">
+            <div class="f-header-left">
+              <div class="f-icon-badge">📅</div>
+              <div>
+                <h3 class="f-card-title"><span id="forecastStationName">臺北氣象站</span> • 未來一週天氣預報</h3>
+                <p class="f-card-subtitle">中央氣象署 CWA 7日趨勢 • 隨測站選擇即時切換</p>
+              </div>
+            </div>
+            <div class="f-header-right">
+              <div class="f-legend-tag">
+                <span class="f-legend-dot dot-max"></span> 最高溫
+                <span class="f-legend-dot dot-min"></span> 最低溫
+              </div>
+            </div>
+          </div>
+
+          <!-- 7 天天氣預報橫向卡片網格 -->
+          <div class="forecast-days-grid" id="forecastDaysGrid">
+            <!-- 由 JS 動態生成 7 天卡片 -->
+          </div>
+        </section>
+
       </section>
 
       <!-- ====================================================================
@@ -195,7 +248,7 @@
           </div>
           <div class="metric-feels-like" id="sidebarSubText">氣候舒適 • 氣流順暢穩定</div>
 
-          <!-- Google 快捷操作按鈕列 -->
+          <!-- 快捷操作按鈕列 -->
           <div class="place-actions-row">
             <button class="action-btn active" id="btnFocusCompass" title="查看風向">
               <svg width="18" height="18" viewBox="0 0 24 24" fill="#1A73E8">
@@ -331,7 +384,7 @@
 
     <!-- 頁尾 -->
     <footer class="gmap-footer">
-      <p>資料來源：交通部中央氣象署（CWA）開放資料平臺 • 70% 真實比例地圖與 Windy 動態風場</p>
+      <p>資料來源：交通部中央氣象署（CWA）開放資料平臺 • CWA 即時風場流線圖與一週天氣預報</p>
     </footer>
 
   </div>
