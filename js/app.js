@@ -43,7 +43,7 @@ document.addEventListener('DOMContentLoaded', () => {
   leafletMap.on('zoom move', () => {
     const center = leafletMap.getCenter();
     const zoom = leafletMap.getZoom();
-    windEngine.setTransform(center.lng, center.lat, zoom);
+    windEngine.setTransform(center.lng, center.lat, zoom); if (windEngine.rebuildVectorGrid) windEngine.rebuildVectorGrid();
   });
 
   // 4. 快取 DOM 節點
@@ -190,7 +190,7 @@ document.addEventListener('DOMContentLoaded', () => {
       <div class="g-pin-node ${isActive ? 'active' : ''}">
         <div class="g-pin-label">
           <span class="label-station">${st.name}</span>
-          <span class="label-wind-arrow" style="transform: rotate(${st.windDeg}deg);">
+          <span class="label-wind-arrow" style="transform: rotate(${(st.windDeg + 180) % 360}deg);">
             <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
               <line x1="12" y1="19" x2="12" y2="5"/>
               <polyline points="5 12 12 5 19 12"/>
